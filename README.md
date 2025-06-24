@@ -4,10 +4,24 @@
 ## Information ##
 
 
-## Installation ##
+# Tallis Notes on sphere-deployment-manager
 
-Run 'install.py' to setup a password.
+# Intention of the deployment manager
+- image generation
+    creates firmware images for each device 
+- label creation
+    generate device labels
+- deployment tracking
+    organizes and records networkIDs (internal id, addresses), houseIDs (4-digit delivery id), deployment and status
 
-### Dependencies ###
+# Definitions
+- firmware image = the software that is embedded in IoT devices
 
-Install all necessary python packages, 'srecord' for 'srec_cat, and 'texlive' for 
+# What devices need firmware:
+- Pis
+- NUC
+- dongles
+- wearable?
+- barometer arduino
+- docking station
+- video and cameras
