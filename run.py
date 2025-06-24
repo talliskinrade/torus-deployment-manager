@@ -7,7 +7,7 @@ from subprocess import call
 import datetime
 import os
 import hashlib
-import  ConfigParser
+import configparser
 import getpass
 import qrcode
 import csv
@@ -16,7 +16,7 @@ import shutil
 
 DEFAULT_DEPLOY_VERSION = 'elmer.4' # Set here the default version to deploy
 
-PROJECT = 1 # 0 for IRC-SPHERE
+PROJECT = 1 # 0 for IRC-TORUS
 
 DEVICE_OFFSET_GATEWAY_F = 1
 DEVICE_OFFSET_GATEWAY_G = 64
@@ -58,7 +58,7 @@ def open_keyfile(password):
     with open("ckeys", 'rb') as in_file:
         keys = enc.decrypt(in_file, password)
         if  hashlib.sha1(keys).hexdigest() != hash[0]:
-            return "";
+            return ""
         else:
             return binascii.hexlify(keys)
     in_file.close()
@@ -73,10 +73,10 @@ def get_key(networkID,keys_hex):
 def make_qrcode(directory_qr, lf, addr, device_type, count, c):
     qr=qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
     if device_type == "W":
-	    m = ':'.join(addr[i:i+2] for i in range(0,len(addr),2))
-	    qr.add_data(m)
+        m = ':'.join(addr[i:i+2] for i in range(0,len(addr),2))
+        qr.add_data(m)
     else:
-	    qr.add_data(mac2ipv6(addr))
+        qr.add_data(mac2ipv6(addr))
     qr.make(fit=True)
     img=qr.make_image()
     qr_filename = device_type + "%.2d" % (c) + "_" + addr+".png"
@@ -145,7 +145,7 @@ if os.path.isfile(join("config", config_file)) == False:
     print("Configuration file does not exist.")
     sys.exit(1)
 
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 config.readfp(open(join("config", config_file)))
 
 total_gateways = int(config.get("DEFAULT", "total_gateways"))
@@ -168,7 +168,7 @@ tsch_type = config.get("DEFAULT", "tsch")
 # Deploy Version
 try:
 	deploy_version = config.get("DEFAULT", "version")
-except ConfigParser.NoOptionError:
+except configparser.NoOptionError:
 	deploy_version = DEFAULT_DEPLOY_VERSION
 	print("No explicit system version specified. Using default: " + deploy_version)
 else:
@@ -190,30 +190,30 @@ else:
 
 Wearable_Contiki = 0
 Wearable_Firmware_Filename = "SPW2_full.hex"
-if (deploy_version == 'cng-sphere'):
+if (deploy_version == 'cng-torus'):  
 	MEM_OFFSET_WEARABLE = MEM_OFFSET_CONTIKI
 	MEM_OFFSET_WEARABLE_END = MEM_OFFSET_CONTIKI_END
-	Wearable_Firmware_Filename = "sphere-wearable.hex"
+	Wearable_Firmware_Filename = "torus-wearable.hex"
 	Wearable_Contiki = 1
 
 # convert house ID to network ID
 network = -1
 house = int(config.get("DEFAULT", "house_id"))
 house_string = "%.4d" % (house)
-with open('sphere_network_id.csv', 'rb') as fc:
+with open('torus_network_id.csv', 'rb') as fc:
     reader = csv.reader(fc, delimiter=',')
     for row in reader:
          if row[1] == house_string:
              if row[2] == "0":
-                 print "House ID not allocated."
+                 print ("House ID not allocated.")
                  sys.exit(1)
              if row[3] == "0":
-                 print "House ID not active."
+                 print ("House ID not active.")
                  sys.exit(1)
              network = int(row[0])
 
 if network == -1:
-    print("House ID not registered in 'sphere_network_id.csv'.")
+    print("House ID not registered in 'torus_network_id.csv'.")
     sys.exit(-1)
 
 if TEST_NETWORK_ID_MIN <= network <= TEST_NETWORK_ID_MAX:
@@ -254,7 +254,7 @@ lf.write("\\usepackage{tikz}\n")
 lf.write("\\begin{document}\n")
 lf.write("\\pagenumbering{gobble}")
 
-print("SPHERE Deployment Manager - Report")
+print("TORUS Deployment Manager - Report")
 print("--------------------------------------------")
 print("House ID: " + house_string)
 print("Network ID: " + "%d" % (network))

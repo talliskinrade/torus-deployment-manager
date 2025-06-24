@@ -1,6 +1,6 @@
 from hashlib import md5
-from Crypto.Cipher import AES
-from Crypto import Random
+from Cryptodome.Cipher import AES
+from Cryptodome import Random
 
 def derive_key_and_iv(password, salt, key_length, iv_length):
     d = d_i = ''

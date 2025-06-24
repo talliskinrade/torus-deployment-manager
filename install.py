@@ -7,7 +7,7 @@ from subprocess import call
 import datetime
 import os
 import hashlib
-import  ConfigParser
+import configparser
 import getpass
 import qrcode
 import csv
@@ -38,7 +38,7 @@ def open_keyfile(password,hash):
 
 ###########################################################################################
 
-print("SPHERE Deployment Manager - Installation Script")
+print("TORUS Deployment Manager - Installation Script")
 
 if (os.path.isfile('ckeys')):
   print("Key file 'ckeys' already exists. Manually delete it to reinstall.")
@@ -46,6 +46,7 @@ if (os.path.isfile('ckeys')):
 
 print("Set password for key file.")
 password = getpass.getpass()
+# print(type(password))
 
 with open('tmp', 'wb') as f:
   f.write(os.urandom(KEY_NUM*KEY_SIZE))
@@ -72,7 +73,7 @@ if(not ok):
   os.remove('ckeys.hash')
   sys.exit(1)
 
-with open("sphere_network_id.csv", 'w') as f:
+with open("torus_network_id.csv", 'w') as f:
   f.write("Network ID (NID), House ID (HID), Allocated, Active\n")
   for i in range(KEY_NUM):
     f.write(str(i) + ",-1,,\n")
