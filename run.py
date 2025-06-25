@@ -20,7 +20,7 @@ PROJECT = 1 # 0 for IRC-SPHERE
 
 DEVICE_OFFSET_GATEWAY_F = 1
 DEVICE_OFFSET_GATEWAY_G = 64
-DEVICE_OFFSET_ENVIRONMENTAL = 128
+DEVICE_OFFSET_RPIS = 128
 DEVICE_OFFSET_WEARABLE = 192
 
 MEM_OFFSET_CONTIKI = "0x01FF88"
@@ -153,9 +153,9 @@ if total_gateways < 0 or total_gateways > 62:
     print("Incorrect number of gateways. Use [0-62].")
     sys.exit(1)
 
-total_environmental = int(config.get("DEFAULT", "total_environmental"))
-if total_environmental < 0 or total_environmental > 64:
-    print("Incorrect number of environmental sensors. Use [0-64].")
+total_rpis = int(config.get("DEFAULT", "total_rpis"))
+if total_rpis < 0 or total_rpis > 64:
+    print("Incorrect number of rpi sensors. Use [0-64].")
     sys.exit(1)
 
 total_wearables = int(config.get("DEFAULT", "total_wearables"))
@@ -163,7 +163,7 @@ if total_wearables < 0 or total_wearables > 64:
     print("Incorrect number of wearables. Use [0-64].")
     sys.exit(1)
 
-tsch_type = config.get("DEFAULT", "tsch")
+# tsch_type = config.get("DEFAULT", "tsch")
 
 # Deploy Version
 try:
@@ -275,7 +275,8 @@ label_addr = make_ieee_addr(PROJECT, network, device_f)
 BLE_addr_le = make_ble_addr(PROJECT, network, device_f, False)
 IEEE802154_addr_le =  make_ieee_addr(PROJECT, network, device_f, False)
 
-make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type,"br.hex"), directory_img, label_addr, "G", "F", device_count,1)
+# make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type,"br.hex"), directory_img, label_addr, "G", "F", device_count,1)
+make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, directory_img, label_addr, "G", "F", device_count,1)
 
 af.write(label_addr + "\n")
 
@@ -295,7 +296,8 @@ IEEE802154_addr_le =  make_ieee_addr(PROJECT, network, device_g, False)
 if RG_G_Contiki == 0:
 	make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_GATEWAY_G, MEM_OFFSET_GATEWAY_G_END, "G2_full.hex", directory_img, label_addr, "G", "G", device_count,1)
 else:
-	make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type,"br.hex"), directory_img, label_addr, "G", "G", device_count,1)
+    # make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type,"br.hex"), directory_img, label_addr, "G", "G", device_count,1)
+	make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, directory_img, label_addr, "G", "G", device_count,1)
 
 af.write(label_addr + "\n")
 
@@ -312,8 +314,8 @@ for gateway_count in range(1,total_gateways):
 
     BLE_addr_le = make_ble_addr(PROJECT, network, device_f, False)
     IEEE802154_addr_le =  make_ieee_addr(PROJECT, network, device_f, False)
-
-    make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type,"spg.hex"), directory_img, label_addr, "G", "F", device_count, gateway_count+1)
+    # make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type,"spg.hex"), directory_img, label_addr, "G", "F", device_count, gateway_count+1)
+    make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, directory_img, label_addr, "G", "F", device_count, gateway_count+1)
 
     af.write(label_addr + "\n")
 
@@ -336,29 +338,31 @@ for gateway_count in range(1,total_gateways):
 
     print("[Device: " + "%.3d" % (device_g) + "] Image created. Gateway (G): " + label_addr)    
 
-# ENVIRONMENTAL SENSORS
-print("Total Environmental: " + str(total_environmental))
-for env_count in range(0,total_environmental):
+# RPI SENSORS
+print("Total Rpis: " + str(total_rpis))
+for env_count in range(0,total_rpis):
     device_count = device_count + 1
 
-    device = DEVICE_OFFSET_ENVIRONMENTAL + env_count
+    device = DEVICE_OFFSET_RPIS + env_count
 
     label_addr = make_ieee_addr(PROJECT, network, device)
 
     BLE_addr_le = make_ble_addr(PROJECT, network, device, False)
     IEEE802154_addr_le =  make_ieee_addr(PROJECT, network, device, False)
 
-    make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type,"spes.hex"), directory_img, label_addr, "E", "", device_count, env_count)
+    # make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type,"spes.hex"), directory_img, label_addr, "E", "", device_count, env_count)
+    make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, directory_img, label_addr, "E", "", device_count, env_count)
 
     af.write(label_addr + "\n")
 
     make_qrcode(directory_qr, lf, label_addr, "E", device_count, env_count)
 
-    print("[Device: " + "%.3d" % (device) + "] Image created. Environmental: " + label_addr)
+    print("[Device: " + "%.3d" % (device) + "] Image created. Rpis: " + label_addr)
 
-    make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type, "spwater.hex"), directory_img, label_addr, "AQ", "", device_count, env_count)
+    # make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, join(tsch_type, "spwater.hex"), directory_img, label_addr, "AQ", "", device_count, env_count)
+    #make_image(network, keys, IEEE802154_addr_le, BLE_addr_le, MEM_OFFSET_CONTIKI, MEM_OFFSET_CONTIKI_END, directory_img, label_addr, "AQ", "", device_count, env_count)
 
-    print("[Device: " + "%.3d" % (device) + "] Image created. Water sensor: " + label_addr)
+    #print("[Device: " + "%.3d" % (device) + "] Image created. Water sensor: " + label_addr)
 
 
 # WEARABLES
