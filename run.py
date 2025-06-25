@@ -16,7 +16,7 @@ import shutil
 
 DEFAULT_DEPLOY_VERSION = 'elmer.4' # Set here the default version to deploy
 
-PROJECT = 1 # 0 for IRC-TORUS
+PROJECT = 1 # 0 for IRC-SPHERE
 
 DEVICE_OFFSET_GATEWAY_F = 1
 DEVICE_OFFSET_GATEWAY_G = 64
@@ -78,7 +78,7 @@ def make_qrcode(directory_qr, lf, addr, device_type, count, c):
     else:
         qr.add_data(mac2ipv6(addr))
     qr.make(fit=True)
-    img=qr.make_image()
+    img=qr.make_image() # fill_color="black", back_color="white"
     qr_filename = device_type + "%.2d" % (c) + "_" + addr+".png"
     img.save(join(directory_qr, qr_filename))
     lf.write("\\begin{tikzpicture}[remember picture,overlay]\n")
@@ -146,7 +146,7 @@ if os.path.isfile(join("config", config_file)) == False:
     sys.exit(1)
 
 config = configparser.ConfigParser()
-config.readfp(open(join("config", config_file)))
+config.read(join("config", config_file))
 
 total_gateways = int(config.get("DEFAULT", "total_gateways"))
 if total_gateways < 0 or total_gateways > 62:
@@ -200,7 +200,7 @@ if (deploy_version == 'cng-torus'):
 network = -1
 house = int(config.get("DEFAULT", "house_id"))
 house_string = "%.4d" % (house)
-with open('torus_network_id.csv', 'rb') as fc:
+with open('torus_network_id.csv', 'r') as fc:
     reader = csv.reader(fc, delimiter=',')
     for row in reader:
          if row[1] == house_string:
@@ -392,6 +392,6 @@ lf.close()
 print("Creating labels..")
 os.chdir(join("out", house_string,"qr"))
 with open(os.devnull, "w") as fnull:
-    result = call(["pdflatex", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull)
-    result = call(["pdflatex", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull)   
+    result = call([r"C:\Users\wo22854\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull) # replace "fire directory" with "pdflatex"
+    result = call([r"C:\Users\wo22854\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull)   
 print("Labels written in labels.pdf")
