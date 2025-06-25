@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../sphere-deployment-manager"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {}
+}
