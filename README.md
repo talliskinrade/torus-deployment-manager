@@ -147,7 +147,7 @@ we no longer have the water environmental sensors, so anything updatin gfirmware
 the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore. i think the Pis only have 1 MCU that does the ble-scan-advertise
 
 ## Questions ##
-- do the Rasberry Pi's need a scharing schedule? A: I don't think so.
+- do the mac addresses need to be colon seperated?
 
 
 ## Log ##
@@ -165,7 +165,13 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
 - When creating the labels, had to replace "pdflatex" with the file directory for pdflatex in miktex module.
 - Scrap 'tsch', only using BLE advertising now. I don't think the Pi's require a sharing schedule.
 - Scrap 'total_environmental'.  These were used in the SPHERE project, but we're not using them anymore
-- Added variable 'total_rpis'. these and the raspberry pi's that forward data to the NUC (gateway).
-- `total_gateway`: Total number of gateways including root gateway. Aka the NUC.
-- 
+- `total_gateway`: Total number of gateways including root gateway. Aka the NUC. renamed to rpi.
+- for wearable
+    - random mac addr: EE:54:52:53:00:00
+    - ble addr: C0:54:52:53:00:00
+- dont need ieee addr
+- rpi done. getting the random mac address in the address file. last 4 digits are the house id. need to ask if he wants then calon seperated or not.
+- install.py creates a password for the key file. there are 256 keys in the ckeys file, and each one is applied to a wearable.
+
+
 >>>>>>> 12438dc86a2007be4ce26837d4384f458eb6d021
