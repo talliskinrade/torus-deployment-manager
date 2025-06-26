@@ -116,13 +116,13 @@ def make_ble_addr(network, device, be = True):
         BLE_addr = "%.4x" % (network) + "535254" + "%.2x" % (device) # Little-endian
     return BLE_addr
 
-def make_image(network, keys, mac_addr_le, ble_addr_le, offset, offsetend, filename, directory, addr, device_type, subtype, count, tc):
+def make_image(network, keys, mac_addr_le, ble_addr_le, offset, offsetend, filename, directory, addr, device_type, count, tc):
     with open("key.bin", 'wb') as f:
         f.write(binascii.unhexlify(get_key(network,keys)))
         f.write(binascii.unhexlify(mac_addr_le))
         f.write(binascii.unhexlify(ble_addr_le))
     f.close()
-    call(["srec_cat", "key.bin", "-binary", "-offset", offset, join(directory_firmware, filename), "-intel", "-exclude", offset, offsetend, "-o", join(directory, device_type + "%.2d" % (tc) + subtype + "_" + addr+".hex"), "-intel"])
+    call(["srec_cat", "key.bin", "-binary", "-offset", offset, join(directory_firmware, filename), "-intel", "-exclude", offset, offsetend, "-o", join(directory, device_type + "%.2d" % (tc) + "_" + addr+".hex"), "-intel"])
     os.remove("key.bin")
  
 ###########################################################################################
@@ -324,7 +324,7 @@ for wearable_count in range(0,total_wearables):
     BLE_addr_le = make_ble_addr(network, device, False)
     MAC_addr_le =  make_mac_addr(network, device, False)
 
-    make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_WEARABLE, MEM_OFFSET_WEARABLE_END, Wearable_Firmware_Filename, directory_img, label_addr, "W", "", device_count, wearable_count)
+    make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_WEARABLE, MEM_OFFSET_WEARABLE_END, Wearable_Firmware_Filename, directory_img, label_addr, "W", device_count, wearable_count)
 
     af.write(label_addr + "\n")
 
