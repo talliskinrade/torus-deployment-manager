@@ -174,7 +174,8 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
 - install.py creates a password for the key file. there are 256 keys in the ckeys file, and each one is applied to a wearable.
 
 # 26/06/25 #
-- the wearable and the dongle need ble addresses
-- the pi and the nuc need mac addresses
+- the wearable and the dongle need ble addresses, the pi and the nuc need mac addresses?
+- wrote up breakdown of sphere-deployment-manager
+
 
 >>>>>>> 12438dc86a2007be4ce26837d4384f458eb6d021
