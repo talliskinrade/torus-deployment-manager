@@ -225,7 +225,7 @@ print("Date: " + datetime.date.today().strftime('%Y-%m-%d'))
 
 device_count = 0
 
-# ELEPHANTS
+# ELEPHANTS - in progress
 call(["srec_cat", join(directory_firmware, "SPW2.hex"), "-intel", join(directory_firmware, "SPW2Stack.hex"), "-intel", "-o", join(directory_firmware, Wearable_Firmware_Filename), "-intel"])   
 
 print("Total Wearables: " + str(total_wearables))
@@ -247,7 +247,7 @@ for wearable_count in range(0,total_wearables):
 
     print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + label_addr)   
 
-# TRUNKS
+# TRUNKS - in progress
 call(["srec_cat", join(directory_firmware, "SPW2.hex"), "-intel", join(directory_firmware, "SPW2Stack.hex"), "-intel", "-o", join(directory_firmware, Wearable_Firmware_Filename), "-intel"])   
 
 print("Total Wearables: " + str(total_wearables))
