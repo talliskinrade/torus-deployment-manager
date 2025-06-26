@@ -176,6 +176,9 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
 # 26/06/25 #
 - the wearable and the dongle need ble addresses, the pi and the nuc need mac addresses?
 - wrote up breakdown of sphere-deployment-manager
+- the forwarding pis are dubbed elephants (for now)
+- the ble dongles are dubbed trunks (for now)
+- other potential names: rhino and horn, platapus and beak, unicorn and horn, narwhal and horn, bird and beak
 
 
 >>>>>>> 12438dc86a2007be4ce26837d4384f458eb6d021

@@ -18,12 +18,16 @@ DEFAULT_DEPLOY_VERSION = 'elmer.4' # Set here the default version to deploy
 
 PROJECT = 1 # 0 for IRC-SPHERE
 
-DEVICE_OFFSET_GATEWAY_F = 1
-DEVICE_OFFSET_RPIS = 128
+DEVICE_OFFSET_ELEPHANT = 1
+DEVICE_OFFSET_TRUNK = 128
 DEVICE_OFFSET_WEARABLE = 192
 
 MEM_OFFSET_WEARABLE = "0xDFE0"
 MEM_OFFSET_WEARABLE_END = "0xDFFE"
+# MEM_OFFSET_ELEPHANT = ""
+# MEM_OFFSET_ELEPHANT_END = ""
+MEM_OFFSET_TRUNK = "0x000FF000"
+MEM_OFFSET_TRUNK_END = "0x000FFFFF"
 
 TEST_NETWORK_ID_MIN = 250
 TEST_NETWORK_ID_MAX = 254
@@ -220,6 +224,50 @@ print("Network ID: " + "%d" % (network))
 print("Date: " + datetime.date.today().strftime('%Y-%m-%d'))
 
 device_count = 0
+
+# ELEPHANTS
+call(["srec_cat", join(directory_firmware, "SPW2.hex"), "-intel", join(directory_firmware, "SPW2Stack.hex"), "-intel", "-o", join(directory_firmware, Wearable_Firmware_Filename), "-intel"])   
+
+print("Total Wearables: " + str(total_wearables))
+for wearable_count in range(0,total_wearables):
+    device_count = device_count + 1
+
+    device = DEVICE_OFFSET_WEARABLE + wearable_count
+
+    label_addr = make_ble_addr(network, device)
+
+    BLE_addr_le = make_ble_addr(network, device, False)
+    MAC_addr_le =  make_mac_addr(network, device, False)
+
+    make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_WEARABLE, MEM_OFFSET_WEARABLE_END, Wearable_Firmware_Filename, directory_img, label_addr, "W", device_count, wearable_count)
+
+    af.write(label_addr + "\n")
+
+    make_qrcode(directory_qr, lf, label_addr, "W", device_count, wearable_count)
+
+    print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + label_addr)   
+
+# TRUNKS
+call(["srec_cat", join(directory_firmware, "SPW2.hex"), "-intel", join(directory_firmware, "SPW2Stack.hex"), "-intel", "-o", join(directory_firmware, Wearable_Firmware_Filename), "-intel"])   
+
+print("Total Wearables: " + str(total_wearables))
+for wearable_count in range(0,total_wearables):
+    device_count = device_count + 1
+
+    device = DEVICE_OFFSET_WEARABLE + wearable_count
+
+    label_addr = make_ble_addr(network, device)
+
+    BLE_addr_le = make_ble_addr(network, device, False)
+    MAC_addr_le =  make_mac_addr(network, device, False)
+
+    make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_WEARABLE, MEM_OFFSET_WEARABLE_END, Wearable_Firmware_Filename, directory_img, label_addr, "W", device_count, wearable_count)
+
+    af.write(label_addr + "\n")
+
+    make_qrcode(directory_qr, lf, label_addr, "W", device_count, wearable_count)
+
+    print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + label_addr)   
 
 # WEARABLES
 call(["srec_cat", join(directory_firmware, "SPW2.hex"), "-intel", join(directory_firmware, "SPW2Stack.hex"), "-intel", "-o", join(directory_firmware, Wearable_Firmware_Filename), "-intel"])   
