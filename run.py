@@ -172,7 +172,7 @@ if not os.path.exists(directory_firmware):
 
 print("Using system version: " + deploy_version)
 
-Wearable_Firmware_Filename = "zephyr.hex"
+Wearable_Firmware_Filename = "zephyr_full.hex"
 Trunk_Firmware_Filename = "G2_full.hex"
 
 # convert house ID to network ID
@@ -284,7 +284,10 @@ for trunk_count in range(0,total_trunks):
     print("[Device: " + "%.3d" % (device) + "] Image created. Trunk: " + label_addr)   
 
 # WEARABLES
-call(["srec_cat", join(directory_firmware, "zephyr.hex"), "-intel", join(directory_firmware, "zephyr.hex"), "-intel", "-o", join(directory_firmware, Wearable_Firmware_Filename), "-intel"])   
+shutil.copyfile(
+    join(directory_firmware, "zephyr.hex"),
+    join(directory_firmware, Wearable_Firmware_Filename)
+)
 
 print("Total Wearables: " + str(total_wearables))
 for wearable_count in range(0,total_wearables):
