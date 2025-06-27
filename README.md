@@ -212,6 +212,13 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
     [Device: 195] Image created. Wearable: c35452530000
     Creating labels..
     Labels written in labels.pdf
+- from BORUS
+    static const char *target_ap_addrs[] = {
+        "2C:CF:67:89:E0:5D",	// Public address of the built-in RPi controller 
+        "C0:54:52:53:00:00",	// Random static address of the nrf53840dk
+    };
+
+    
 
 
 >>>>>>> 12438dc86a2007be4ce26837d4384f458eb6d021
