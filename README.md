@@ -180,5 +180,11 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
 - the ble dongles are dubbed trunks (for now)
 - other potential names: rhino and horn, platapus and beak, unicorn and horn, narwhal and horn, bird and beak
 
+# 27/06/25 #
+- MEM_OFFSET_* -- inclusive start address
+- MEM_OFFSET_*_END -- exclusive end address
+- sreccat: -exclude <start> <end> -- excludes all addresses from start (inclusive) up to but not including end (exclusive)
+- need 32 bytes to insert the block. 16 bytes for key, 8 bytes static address, 8 bytes ble
+- for elephant, create a json file instead
 
 >>>>>>> 12438dc86a2007be4ce26837d4384f458eb6d021

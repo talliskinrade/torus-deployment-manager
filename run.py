@@ -13,6 +13,7 @@ import qrcode
 import csv
 from os.path import join
 import shutil
+import json
 
 DEFAULT_DEPLOY_VERSION = 'elmer.4' # Set here the default version to deploy
 
@@ -91,9 +92,9 @@ def make_qrcode(directory_qr, lf, addr, device_type, count, c):
 
 def make_mac_addr(network, device, be = True):
     if be == True:
-        rand_mac_addr = "ee545253" + "%.2x" % (network) + "%.2x" % (device) # Big-endian
+        rand_mac_addr = "%.2x" % (device) + "545253" + "%.4x" % (network) # Big-endian
     else:
-        rand_mac_addr = "%.2x" % (device) + "%.2x" % (network) + "535254ee" # Little-endian
+        rand_mac_addr = "%.4x" % (network) + "535254" + "%.2x" % (device) # Little-endian
     return rand_mac_addr
 
 def make_ble_addr(network, device, be = True):
@@ -104,13 +105,27 @@ def make_ble_addr(network, device, be = True):
     return BLE_addr
 
 def make_image(network, keys, mac_addr_le, ble_addr_le, offset, offsetend, filename, directory, addr, device_type, count, tc):
-    with open("key.bin", 'wb') as f:
-        f.write(binascii.unhexlify(get_key(network,keys)))
-        f.write(binascii.unhexlify(mac_addr_le))
-        f.write(binascii.unhexlify(ble_addr_le))
-    f.close()
-    call(["srec_cat", "key.bin", "-binary", "-offset", offset, join(directory_firmware, filename), "-intel", "-exclude", offset, offsetend, "-o", join(directory, device_type + "%.2d" % (tc) + "_" + addr+".hex"), "-intel"])
-    os.remove("key.bin")
+    if device_type == "E":
+        config = {
+            "device": f"{device_type}{tc:02s}_{addr}",
+            "key": get_key(network, keys),
+            "mac_address": ":".join(mac_addr_le[i:i+2] for i in range(0, len(mac_addr_le), 2)),
+            "ble_adddress": ":".join(ble_addr_le[i:i+2] for i in range(0, len(ble_addr_le), 2)),
+            "firmware": join(directory_firmware, filename)
+        }
+
+        config_path = join(directory, f"{device_type}{tc:02s}_{addr}" +  ".json")
+        with open(config_path, 'w') as config_file:
+            json.dump(config, config_file, indent=4)
+    
+    else:
+        with open("key.bin", 'wb') as f:
+            f.write(binascii.unhexlify(get_key(network,keys)))
+            f.write(binascii.unhexlify(mac_addr_le))
+            f.write(binascii.unhexlify(ble_addr_le))
+        f.close()
+        call(["srec_cat", "key.bin", "-binary", "-offset", offset, join(directory_firmware, filename), "-intel", "-exclude", offset, offsetend, "-o", join(directory, device_type + "%.2d" % (tc) + "_" + addr+".hex"), "-intel"])
+        os.remove("key.bin")
  
 ###########################################################################################
 
@@ -132,14 +147,14 @@ if os.path.isfile(join("config", config_file)) == False:
 config = configparser.ConfigParser()
 config.read(join("config", config_file))
 
-total_gateways = int(config.get("DEFAULT", "total_gateways"))
-if total_gateways < 0 or total_gateways > 62:
-    print("Incorrect number of gateways. Use [0-62].")
+total_elephants = int(config.get("DEFAULT", "total_elephants"))
+if total_elephants < 0 or total_elephants > 62:
+    print("Incorrect number of elephants. Use [0-62].")
     sys.exit(1)
 
-total_rpis = int(config.get("DEFAULT", "total_rpis"))
-if total_rpis < 0 or total_rpis > 64:
-    print("Incorrect number of rpi sensors. Use [0-64].")
+total_trunks = int(config.get("DEFAULT", "total_trunks"))
+if total_trunks < 0 or total_trunks > 64:
+    print("Incorrect number of trunks. Use [0-64].")
     sys.exit(1)
 
 total_wearables = int(config.get("DEFAULT", "total_wearables"))
@@ -158,6 +173,7 @@ if not os.path.exists(directory_firmware):
 print("Using system version: " + deploy_version)
 
 Wearable_Firmware_Filename = "SPW2_full.hex"
+Trunk_Firmware_Filename = "G2_full.hex"
 
 # convert house ID to network ID
 network = -1
@@ -226,48 +242,46 @@ print("Date: " + datetime.date.today().strftime('%Y-%m-%d'))
 device_count = 0
 
 # ELEPHANTS - in progress
-call(["srec_cat", join(directory_firmware, "SPW2.hex"), "-intel", join(directory_firmware, "SPW2Stack.hex"), "-intel", "-o", join(directory_firmware, Wearable_Firmware_Filename), "-intel"])   
-
-print("Total Wearables: " + str(total_wearables))
-for wearable_count in range(0,total_wearables):
+print("Total Elephants: " + str(total_elephants))
+for elephant_count in range(0,total_elephants):
     device_count = device_count + 1
 
-    device = DEVICE_OFFSET_WEARABLE + wearable_count
+    device = DEVICE_OFFSET_ELEPHANT + elephant_count
 
     label_addr = make_ble_addr(network, device)
 
     BLE_addr_le = make_ble_addr(network, device, False)
     MAC_addr_le =  make_mac_addr(network, device, False)
 
-    make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_WEARABLE, MEM_OFFSET_WEARABLE_END, Wearable_Firmware_Filename, directory_img, label_addr, "W", device_count, wearable_count)
+    make_image(network, keys, MAC_addr_le, BLE_addr_le, "", "", "", directory_img, label_addr, "E", device_count, elephant_count)
 
     af.write(label_addr + "\n")
 
-    make_qrcode(directory_qr, lf, label_addr, "W", device_count, wearable_count)
+    make_qrcode(directory_qr, lf, label_addr, "E", device_count, elephant_count)
 
-    print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + label_addr)   
+    print("[Device: " + "%.3d" % (device) + "] Image created. Elephant: " + label_addr)   
 
-# TRUNKS - in progress
-call(["srec_cat", join(directory_firmware, "SPW2.hex"), "-intel", join(directory_firmware, "SPW2Stack.hex"), "-intel", "-o", join(directory_firmware, Wearable_Firmware_Filename), "-intel"])   
+# TRUNKS
+call(["srec_cat", join(directory_firmware, "G2.hex"), "-intel", join(directory_firmware, "G2Stack.hex"), "-intel", "-o", join(directory_firmware, Trunk_Firmware_Filename), "-intel"])   
 
-print("Total Wearables: " + str(total_wearables))
-for wearable_count in range(0,total_wearables):
+print("Total Trunks: " + str(total_trunks))
+for trunk_count in range(0,total_trunks):
     device_count = device_count + 1
 
-    device = DEVICE_OFFSET_WEARABLE + wearable_count
+    device = DEVICE_OFFSET_TRUNK + trunk_count
 
     label_addr = make_ble_addr(network, device)
 
     BLE_addr_le = make_ble_addr(network, device, False)
     MAC_addr_le =  make_mac_addr(network, device, False)
 
-    make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_WEARABLE, MEM_OFFSET_WEARABLE_END, Wearable_Firmware_Filename, directory_img, label_addr, "W", device_count, wearable_count)
+    make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_TRUNK, MEM_OFFSET_TRUNK_END, Trunk_Firmware_Filename, directory_img, label_addr, "T", device_count, trunk_count)
 
     af.write(label_addr + "\n")
 
-    make_qrcode(directory_qr, lf, label_addr, "W", device_count, wearable_count)
+    make_qrcode(directory_qr, lf, label_addr, "T", device_count, trunk_count)
 
-    print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + label_addr)   
+    print("[Device: " + "%.3d" % (device) + "] Image created. Trunk: " + label_addr)   
 
 # WEARABLES
 call(["srec_cat", join(directory_firmware, "SPW2.hex"), "-intel", join(directory_firmware, "SPW2Stack.hex"), "-intel", "-o", join(directory_firmware, Wearable_Firmware_Filename), "-intel"])   
