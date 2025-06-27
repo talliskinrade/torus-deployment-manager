@@ -186,5 +186,32 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
 - sreccat: -exclude <start> <end> -- excludes all addresses from start (inclusive) up to but not including end (exclusive)
 - need 32 bytes to insert the block. 16 bytes for key, 8 bytes static address, 8 bytes ble
 - for elephant, create a json file instead
+- Output:
+    (venv) PS C:\Users\wo22854\OneDrive - University of Bristol\Documents\TORUS\torus-deployment-manager> python -m run.py 0000
+    Using system version: elmer.4
+    Password:
+    TORUS Deployment Manager - Report
+    --------------------------------------------
+    House ID: 0000
+    Network ID: 0
+    Date: 2025-06-27
+    Total Elephants: 4
+    [Device: 001] Image created. Elephant: 015452530000
+    [Device: 002] Image created. Elephant: 025452530000
+    [Device: 003] Image created. Elephant: 035452530000
+    [Device: 004] Image created. Elephant: 045452530000
+    Total Trunks: 4
+    [Device: 128] Image created. Trunk: 805452530000
+    [Device: 129] Image created. Trunk: 815452530000
+    [Device: 130] Image created. Trunk: 825452530000
+    [Device: 131] Image created. Trunk: 835452530000
+    Total Wearables: 4
+    [Device: 192] Image created. Wearable: c05452530000
+    [Device: 193] Image created. Wearable: c15452530000
+    [Device: 194] Image created. Wearable: c25452530000
+    [Device: 195] Image created. Wearable: c35452530000
+    Creating labels..
+    Labels written in labels.pdf
+
 
 >>>>>>> 12438dc86a2007be4ce26837d4384f458eb6d021

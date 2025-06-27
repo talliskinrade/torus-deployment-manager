@@ -107,14 +107,14 @@ def make_ble_addr(network, device, be = True):
 def make_image(network, keys, mac_addr_le, ble_addr_le, offset, offsetend, filename, directory, addr, device_type, count, tc):
     if device_type == "E":
         config = {
-            "device": f"{device_type}{tc:02s}_{addr}",
-            "key": get_key(network, keys),
+            "device": f"{device_type}{tc:02d}_{addr}",
+            "key": get_key(network, keys).hex(),
             "mac_address": ":".join(mac_addr_le[i:i+2] for i in range(0, len(mac_addr_le), 2)),
             "ble_adddress": ":".join(ble_addr_le[i:i+2] for i in range(0, len(ble_addr_le), 2)),
             "firmware": join(directory_firmware, filename)
         }
 
-        config_path = join(directory, f"{device_type}{tc:02s}_{addr}" +  ".json")
+        config_path = join(directory, f"{device_type}{tc:02d}_{addr}" +  ".json")
         with open(config_path, 'w') as config_file:
             json.dump(config, config_file, indent=4)
     
