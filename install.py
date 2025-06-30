@@ -13,9 +13,10 @@ import qrcode
 import csv
 from os.path import join
 import shutil
+import struct
 
 KEY_NUM = 256
-KEY_SIZE = 16
+KEY_SIZE = 4
 
 def gen_keyfile(in_file,password):
   with open("ckeys", 'wb') as keyfile:
@@ -48,8 +49,14 @@ print("Set password for key file.")
 password = getpass.getpass()
 # print(type(password))
 
+unique_keys = set()
+while len(unique_keys) < KEY_NUM:
+    key = os.urandom(KEY_SIZE)
+    unique_keys.add(key)
+
 with open('tmp', 'wb') as f:
-  f.write(os.urandom(KEY_NUM*KEY_SIZE))
+  for key in unique_keys:
+    f.write(key)
 f.close()
 
 with open('tmp', 'rb') as f:

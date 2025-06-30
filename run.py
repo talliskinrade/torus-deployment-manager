@@ -23,12 +23,16 @@ DEVICE_OFFSET_ELEPHANT = 1
 DEVICE_OFFSET_TRUNK = 128
 DEVICE_OFFSET_WEARABLE = 192
 
-MEM_OFFSET_WEARABLE = "0xDFE0"
-MEM_OFFSET_WEARABLE_END = "0xDFFE"
-# MEM_OFFSET_ELEPHANT = ""
-# MEM_OFFSET_ELEPHANT_END = ""
-MEM_OFFSET_TRUNK = "0x000FF000"
-MEM_OFFSET_TRUNK_END = "0x000FFFFF"
+
+MEM_OFFSET_WEARABLE_STATIC_ADDR = "0x0004C85C"               # in the form C0:54:53:52:00:00'NULL' aka 18 bytes long
+MEM_OFFSET_WEARABLE_STATIC_ADDR_END = "0x0004C86E"           # 0xC85C + 0x12
+
+MEM_OFFSET_WEARABLE_TARGET_AP_ADDR = "0x20003434"           # in the form ee5453520000 aka 12 bytes long
+MEM_OFFSET_WEARABLE_TARGET_AP_ADDR_END = "0x20003440"       # 0x3434 + 0x0C
+
+MEM_OFFSET_WEARABLE_AES_KEY_ADDR = "0x20007A90"                # in the form 01234567012345670123456701234567 aka 4 bytes long
+MEM_OFFSET_WEARABLE_AES_KEY_ADDR_END = "0x20007A94"            # 0x7A90 + 0x04
+
 
 TEST_NETWORK_ID_MIN = 250
 TEST_NETWORK_ID_MAX = 254
@@ -50,12 +54,14 @@ def open_keyfile(password):
             return binascii.hexlify(keys)
     in_file.close()
 
+
 def get_key(networkID,keys_hex):
     if TEST_NETWORK_ID_MIN <= networkID <= TEST_NETWORK_ID_MAX:
         # A non-secure test network; just use repeated network ID as the key
         return "{:02x}".format(networkID) * 16
     # A secure network; use the key from the file
     return keys_hex[(networkID*16)*2:((networkID+1)*16)*2]
+
 
 def make_qrcode(directory_qr, lf, addr, device_type, count, c):
     qr=qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
@@ -90,27 +96,29 @@ def make_qrcode(directory_qr, lf, addr, device_type, count, c):
     lf.write("\\end{tikzpicture}\n")
 
 
-def make_mac_addr(network, device, be = True):
+def make_target_addr(network, device, be = True):
     if be == True:
-        rand_mac_addr = "%.2x" % (device) + "545253" + "%.4x" % (network) # Big-endian
+        mac_addr = "EE545253" + "%.2x" % (device) + "%.2x" % (network) # Big-endian
     else:
-        rand_mac_addr = "%.4x" % (network) + "535254" + "%.2x" % (device) # Little-endian
-    return rand_mac_addr
+        mac_addr = "%.4x" % (network) + "%.2x" % (device) + "535254EE" # Little-endian
+    return mac_addr
+
 
 def make_ble_addr(network, device, be = True):
     if be == True:
-        BLE_addr = "%.2x" % (device) + "545253" + "%.4x" % (network) # Big-endian
+        BLE_addr = "C0545253" + "%.2x" % (device) + "%.2x" % (network) # Big-endian
     else:
-        BLE_addr = "%.4x" % (network) + "535254" + "%.2x" % (device) # Little-endian
+        BLE_addr = "%.4x" % (network) + "%.2x" % (device) + "535254C0" # Little-endian
     return BLE_addr
 
-def make_image(network, keys, mac_addr_le, ble_addr_le, offset, offsetend, filename, directory, addr, device_type, count, tc):
+
+def make_image(network, keys, mac_addr_le, ble_addr_le, insertions, filename, directory, addr, device_type, count, tc):
     if device_type == "E":
         config = {
             "device": f"{device_type}{tc:02d}_{addr}",
             "key": get_key(network, keys).hex(),
-            "mac_address": ":".join(mac_addr_le[i:i+2] for i in range(0, len(mac_addr_le), 2)),
-            "ble_adddress": ":".join(ble_addr_le[i:i+2] for i in range(0, len(ble_addr_le), 2)),
+            "target_address": ":".join(mac_addr_le[i:i+2] for i in range(0, len(mac_addr_le), 2)), # wearable
+            "ble_address": ":".join(ble_addr_le[i:i+2] for i in range(0, len(ble_addr_le), 2)),
             "firmware": join(directory_firmware, filename)
         }
 
@@ -119,15 +127,38 @@ def make_image(network, keys, mac_addr_le, ble_addr_le, offset, offsetend, filen
             json.dump(config, config_file, indent=4)
     
     else:
+        # Create a temporary binary with combined payload
         with open("key.bin", 'wb') as f:
             f.write(binascii.unhexlify(get_key(network,keys)))
             f.write(binascii.unhexlify(mac_addr_le))
             f.write(binascii.unhexlify(ble_addr_le))
-        f.close()
-        call(["srec_cat", "key.bin", "-binary", "-offset", offset, join(directory_firmware, filename), "-intel", "-exclude", offset, offsetend, "-o", join(directory, device_type + "%.2d" % (tc) + "_" + addr+".hex"), "-intel"])
+
+        # Use srec_cat to insert each section
+        cmd = ["srec_cat"]
+        offset_map = {
+            "key": binascii.unhexlify(get_key(network, keys)),
+            "mac_addr": binascii.unhexlify(mac_addr_le),
+            "ble_addr": binascii.unhexlify(ble_addr_le)
+        }
+
+        for i, (offset, label) in enumerate(insertions):
+            with open(f"{label}.bin", 'wb') as part:
+                part.write(offset_map[label])
+            cmd += [f"{label}.bin", "-binary", "-offset", offset]
+
+        cmd += [join(directory_firmware, filename), "-intel"]
+        for offset, label in insertions:
+            cmd += ["-exclude", offset, hex(int(offset, 16) + len(offset_map[label]))]
+        cmd += ["-o", join(directory, device_type + "%.2d" % (tc) + "_" + addr + ".hex"), "-intel"]
+
+        call(cmd)
+        for _, label in insertions:
+            os.remove(f"{label}.bin")
         os.remove("key.bin")
- 
+
+
 ###########################################################################################
+
 
 if not os.path.isfile('ckeys'):
     print("Not installed. Run install.py first.")
@@ -241,47 +272,47 @@ print("Date: " + datetime.date.today().strftime('%Y-%m-%d'))
 
 device_count = 0
 
-# ELEPHANTS - in progress
-print("Total Elephants: " + str(total_elephants))
-for elephant_count in range(0,total_elephants):
-    device_count = device_count + 1
+# # ELEPHANTS - in progress
+# print("Total Elephants: " + str(total_elephants))
+# for elephant_count in range(0,total_elephants):
+#     device_count = device_count + 1
 
-    device = DEVICE_OFFSET_ELEPHANT + elephant_count
+#     device = DEVICE_OFFSET_ELEPHANT + elephant_count
 
-    label_addr = make_ble_addr(network, device)
+#     label_addr = make_ble_addr(network, device)
 
-    BLE_addr_le = make_ble_addr(network, device, False)
-    MAC_addr_le =  make_mac_addr(network, device, False)
+#     BLE_addr_le = make_ble_addr(network, device, False)
+#     MAC_addr_le =  make_mac_addr(network, device, False)
 
-    make_image(network, keys, MAC_addr_le, BLE_addr_le, "", "", "", directory_img, label_addr, "E", device_count, elephant_count)
+#     make_image(network, keys, MAC_addr_le, BLE_addr_le, "", "", "", directory_img, label_addr, "E", device_count, elephant_count)
 
-    af.write(label_addr + "\n")
+#     af.write(label_addr + "\n")
 
-    make_qrcode(directory_qr, lf, label_addr, "E", device_count, elephant_count)
+#     make_qrcode(directory_qr, lf, label_addr, "E", device_count, elephant_count)
 
-    print("[Device: " + "%.3d" % (device) + "] Image created. Elephant: " + label_addr)   
+#     print("[Device: " + "%.3d" % (device) + "] Image created. Elephant: " + label_addr)   
 
-# TRUNKS
-call(["srec_cat", join(directory_firmware, "G2.hex"), "-intel", join(directory_firmware, "G2Stack.hex"), "-intel", "-o", join(directory_firmware, Trunk_Firmware_Filename), "-intel"])   
+# # TRUNKS
+# call(["srec_cat", join(directory_firmware, "G2.hex"), "-intel", join(directory_firmware, "G2Stack.hex"), "-intel", "-o", join(directory_firmware, Trunk_Firmware_Filename), "-intel"])   
 
-print("Total Trunks: " + str(total_trunks))
-for trunk_count in range(0,total_trunks):
-    device_count = device_count + 1
+# print("Total Trunks: " + str(total_trunks))
+# for trunk_count in range(0,total_trunks):
+#     device_count = device_count + 1
 
-    device = DEVICE_OFFSET_TRUNK + trunk_count
+#     device = DEVICE_OFFSET_TRUNK + trunk_count
 
-    label_addr = make_ble_addr(network, device)
+#     label_addr = make_ble_addr(network, device)
 
-    BLE_addr_le = make_ble_addr(network, device, False)
-    MAC_addr_le =  make_mac_addr(network, device, False)
+#     BLE_addr_le = make_ble_addr(network, device, False)
+#     MAC_addr_le =  make_mac_addr(network, device, False)
 
-    make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_TRUNK, MEM_OFFSET_TRUNK_END, Trunk_Firmware_Filename, directory_img, label_addr, "T", device_count, trunk_count)
+#     make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_TRUNK, MEM_OFFSET_TRUNK_END, Trunk_Firmware_Filename, directory_img, label_addr, "T", device_count, trunk_count)
 
-    af.write(label_addr + "\n")
+#     af.write(label_addr + "\n")
 
-    make_qrcode(directory_qr, lf, label_addr, "T", device_count, trunk_count)
+#     make_qrcode(directory_qr, lf, label_addr, "T", device_count, trunk_count)
 
-    print("[Device: " + "%.3d" % (device) + "] Image created. Trunk: " + label_addr)   
+#     print("[Device: " + "%.3d" % (device) + "] Image created. Trunk: " + label_addr)   
 
 # WEARABLES
 shutil.copyfile(
@@ -298,9 +329,13 @@ for wearable_count in range(0,total_wearables):
     label_addr = make_ble_addr(network, device)
 
     BLE_addr_le = make_ble_addr(network, device, False)
-    MAC_addr_le =  make_mac_addr(network, device, False)
+    MAC_addr_le =  make_target_addr(network, device, False)
 
-    make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_WEARABLE, MEM_OFFSET_WEARABLE_END, Wearable_Firmware_Filename, directory_img, label_addr, "W", device_count, wearable_count)
+    make_image(network, keys, MAC_addr_le, BLE_addr_le, [
+    (MEM_OFFSET_WEARABLE_STATIC_ADDR, "ble_addr"),
+    (MEM_OFFSET_WEARABLE_TARGET_AP_ADDR, "mac_addr"),
+    (MEM_OFFSET_WEARABLE_AES_KEY_ADDR, "key")
+], Wearable_Firmware_Filename, directory_img, label_addr, "W", device_count, wearable_count)
 
     af.write(label_addr + "\n")
 
@@ -316,6 +351,6 @@ lf.close()
 print("Creating labels..")
 os.chdir(join("out", house_string,"qr"))
 with open(os.devnull, "w") as fnull:
-    result = call([r"C:\Users\wo22854\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull) # replace "fire directory" with "pdflatex"
-    result = call([r"C:\Users\wo22854\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull)   
+    result = call([r"pdflatex", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull) # replace "fire directory" with "pdflatex"
+    result = call([r"pdflatex", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull)   
 print("Labels written in labels.pdf")
