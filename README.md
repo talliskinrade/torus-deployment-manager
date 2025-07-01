@@ -4,7 +4,9 @@
 
 ## Information
 
-The SPHERE Deployment Manager is a tool for preparing deployment images for the SPHERE IoT platforms. Detailed information is available in [1] ([preprint](https://seis.bristol.ac.uk/~xf14883/files/conf/2018_adhocnow_deployment.pdf)). If you use the SPHERE Deployment Manager you are kindly asked to cite [1].
+The TORUS Deployment Manager is a tool for preparing firmware images and configuration files ('.hex' and '.json') for deployment to TORUS wearable sensors and forwarding gateways (Raspberry Pi and nRF52840 dongles). It is based on the SPHERE Deployment Manager [1] ([preprint](https://seis.bristol.ac.uk/~xf14883/files/conf/2018_adhocnow_deployment.pdf)).
+
+Created by @talliskinrade and based on the work of:
 
 ```
 @inproceedings{Fafoutis2018SDM,
@@ -19,19 +21,20 @@ The SPHERE Deployment Manager is a tool for preparing deployment images for the 
 
 ## Installation
 
-Run `install.py` to setup a password.
+Run `install.py` to setup an encrypted key file with a password.
 
 ### Dependencies
 
 Install all necessary python packages, `srecord` for `srec_cat`, and `texlive` for `pdflatex`.
 
+Must be run in Python version that supports Pillow, which is required for QR code image generation.
+
 ## Configuration File
 
 - `house_id`: House ID (HID)
 - `version`: System version to use as in `/firmware/` (optional).
-- `tsch`: TSCH Schedule to use. Gateways should match schedule: e.g. for 4 total gateways use `3_and_1_shared_schedule`.
-- `total_gateway`: Total number of gateways including root gateway.
-- `total_environmental`: Total number of environmental sensors.
+- `total_elephants`: Total number of Raspberry Pi forwarding gateways, including root gateway and docking stations.
+- `total_trunks`: Total number of nRF52840 USB-dongles ("trunks").
 - `total_wearables`: Total number of wearable sensors.
 
 ### Example
@@ -40,15 +43,14 @@ Install all necessary python packages, `srecord` for `srec_cat`, and `texlive` f
 >>type config\0000.cfg
 [DEFAULT]
 house_id = 0000
-tsch = 3_and_1_shared_schedule
-total_gateways = 4
-total_environmental = 4
+total_elephants = 4
+total_trunks = 4
 total_wearables = 4
 ```
 
 ## Record of Deployments
 
-Each house should be allocated a unique House ID (HID) and entered at the `sphere_network_id.csv`:
+Each house should be allocated a unique House ID (HID) and entered at the `torus_network_id.csv`:
 
 - 1st column: Network ID (NID)
 - 2nd column: House ID (HID)
@@ -59,36 +61,23 @@ Each house should be allocated a unique House ID (HID) and entered at the `spher
 
 ```
 >>python run.py 0000
-No explicit system version specified. Using default system version: elmer.4
+Using system version: elmer.4
 Password:
-SPHERE Deployment Manager - Report
+TORUS Deployment Manager - Report
 --------------------------------------------
 House ID: 0000
-Network ID: 121
-Date: 2017-10-25
-Total Gateways: 4
-[Device: 001] Image created. Root Gateway (F): 00124b0000007901
-[Device: 064] Image created. Root Gateway (G): 00124b0000007940
-[Device: 002] Image created. Gateway (F): 00124b0000007902
-[Device: 065] Image created. Gateway (G): 00124b0000007941
-[Device: 003] Image created. Gateway (F): 00124b0000007903
-[Device: 066] Image created. Gateway (G): 00124b0000007942
-[Device: 004] Image created. Gateway (F): 00124b0000007904
-[Device: 067] Image created. Gateway (G): 00124b0000007943
-Total Environmental: 4
-[Device: 128] Image created. Environmental: 00124b0000007980
-[Device: 128] Image created. Water sensor: 00124b0000007980
-[Device: 129] Image created. Environmental: 00124b0000007981
-[Device: 129] Image created. Water sensor: 00124b0000007981
-[Device: 130] Image created. Environmental: 00124b0000007982
-[Device: 130] Image created. Water sensor: 00124b0000007982
-[Device: 131] Image created. Environmental: 00124b0000007983
-[Device: 131] Image created. Water sensor: 00124b0000007983
+Network ID: 0
+Date: 2025-07-01
+Total Elephants: 4
+[Device: 001] Image created. Elephant: C05452530100
+[Device: 002] Image created. Elephant: C05452530200
+[Device: 003] Image created. Elephant: C05452530300
+[Device: 004] Image created. Elephant: C05452530400
 Total Wearables: 4
-[Device: 192] Image created. Wearable: a0e6f80079c0
-[Device: 193] Image created. Wearable: a0e6f80079c1
-[Device: 194] Image created. Wearable: a0e6f80079c2
-[Device: 195] Image created. Wearable: a0e6f80079c3
+[Device: 192] Image created. Wearable: EE545253c000
+[Device: 193] Image created. Wearable: EE545253c100
+[Device: 194] Image created. Wearable: EE545253c200
+[Device: 195] Image created. Wearable: EE545253c300
 Creating labels..
 Labels written in labels.pdf
 ```
@@ -97,22 +86,15 @@ Labels written in labels.pdf
 
 The output can be found in `/out/<HID>/`:
 
-- `/out/<HID>/img/`: Contains the images to be installed to the devices
+- `/out/<HID>/img/`: Contains the images and JSON files to be installed to the devices
 - `/out/<HID>/label.pdf`: Label file for printing
 
 ## Flashing the Devices
 
-### SPHERE Gateways
+Flash the generated `.hex` files to the devices using your preferred tool.
 
-The two MCUs are named `F` and `G` as marked on the silkscreen of the PCB.
-
-For the root gateway programme only the `F` side.
-
-### SPHERE Environmental Sensors
-
-Use the image marked as 'water sensor' for the environmental sensors that have the water flow sensor board plugged.
-
-=======
+- Wearables: use the `.hex` files in `/out/<HID>/img/`.
+- # Elephants: use the `.json` files in `/out/<HID>/img/` for configuration.
 
 # torus-deployment-manager
 
@@ -238,6 +220,15 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
 - added a section to install.py to ensure all the keys are unique. changed key size to 4 bytes.
 - discovered that C0 denotes a random static address, so changed ble address to "C0545253" + "%.2x" % (device) + "%.2x" % (network) # Big-endian instead
 - so for the static address, raspberry pis must have prefix c0, wearables must have prefix ee
-- half way through changing make image to have inclusions in many adresses, not a block of addresses
+- half way through changing make image to have inclusions in many addresses, not a block of addresses
+
+# 01/07/25
+
+- 20007a90 l O bss 00000004 g_aes_key_id
+- 0004c85c l O rodata 00000012 wearable_static_addr
+- 20003434 l O datas 0000000c target_ap_addrs
+
+- can probably get rid of the offset, because the addresses are different for elephants and wearables
+- seems to be creating the new hex absolutely fine. should be able to test it on the torus53 device.
 
 > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021
