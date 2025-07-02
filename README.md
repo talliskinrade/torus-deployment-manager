@@ -231,4 +231,22 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
 - can probably get rid of the offset, because the addresses are different for elephants and wearables
 - seems to be creating the new hex absolutely fine. should be able to test it on the torus53 device.
 
+# 02/07/25
+
+- The dongle is flashed with the HCI controller firmware at: https://github.com/shuhao-dong/BORUS
+- need to add a seperate docking station
+- i'm strugglig to get the hex file for the dongle/trunk
+- make mqtt topic for elephant: <HID>\<WID>\<EID>
+
+from meeting with duke, to do:
+
+- get rid of zephyr_full.hex <- i'll do this after i know its changing the correct addresses, so at the end or at least once its been tested successfully on the wearable
+- check that aes key and target ap addr are correct
+- target ap addr is a pointer, so make sure your replacing the values its pointing to (on wearable)
+- if multiple wearables in house, the addresses of all the wearables have to be stored in the config files (on elephant)
+- docking station code is out, so add that firmware and deployment section
+- the elephant needs the mqtt topic it needs to pub to
+- the elephant needs the broker address (not sure how to do this yet)
+- confirm whether the wearable requires the addresses to be inputted as big or little endian
+
 > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021
