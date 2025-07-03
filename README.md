@@ -240,13 +240,26 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
 
 from meeting with duke, to do:
 
-- get rid of zephyr_full.hex <- i'll do this after i know its changing the correct addresses, so at the end or at least once its been tested successfully on the wearable
+- get rid of zephyr_full.hex **<- i'll do this after i know its changing the correct addresses, so at the end or at least once its been tested successfully on the wearable**
 - check that aes key and target ap addr are correct
+  20007a90 l O bss 00000004 g_aes_key_id
+  0004c758 l O rodata 00000010 aes_key.0
+  **done**
 - target ap addr is a pointer, so make sure your replacing the values its pointing to (on wearable)
+  0x20003434 <target_ap_addrs>: 0x0004c7b8 0x0004c7cc 0x0004c7e0
+  add 17 addresses to the end of each (covers all the characters)
+  **<- i need the targer ap addr array to have the max number of arrays it can, and just set the ones we're not using to 'NULL' so that the total number of elephants can change per house and it not cause huge issues**
 - if multiple wearables in house, the addresses of all the wearables have to be stored in the config files (on elephant)
+  **done**
 - docking station code is out, so add that firmware and deployment section
+
 - the elephant needs the mqtt topic it needs to pub to
+  <HID>\<EID>
+  The JSON packet should include what wearable it came from i think
+  not sure how we're going to distinguish if theres multiple wearables in the house how we can tell which data comes from which wearable, and how we pass that onto the nuc.
+  **done**
 - the elephant needs the broker address (not sure how to do this yet)
+
 - confirm whether the wearable requires the addresses to be inputted as big or little endian
 
 > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021
