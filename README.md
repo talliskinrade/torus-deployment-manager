@@ -240,7 +240,8 @@ the sphere gateways had 2 MCUs, 'F' and 'G'. I don't think we have that anymore.
 
 from meeting with duke, to do:
 
-- get rid of zephyr_full.hex **<- i'll do this after i know its changing the correct addresses, so at the end or at least once its been tested successfully on the wearable**
+- get rid of zephyr_full.hex
+  **<- i'll do this after i know its changing the correct addresses, so at the end or at least once its been tested successfully on the wearable**
 - check that aes key and target ap addr are correct
   20007a90 l O bss 00000004 g_aes_key_id
   0004c758 l O rodata 00000010 aes_key.0
@@ -287,4 +288,6 @@ from meeting with duke, to do:
   An enterprise that decides to use IP addresses out of the address
   space defined in this document can do so without any coordination
   with IANA or an Internet registry.
+- I think the best way of 'reserving' the memory address is assigning them as 00:00:00:00:00, then if it doesn't begin with 'TRS' then ignore
+  it.
 - > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021
