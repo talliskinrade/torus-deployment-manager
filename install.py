@@ -15,7 +15,7 @@ from os.path import join
 import shutil
 import struct
 
-KEY_NUM = 256
+KEY_NUM = 254
 KEY_SIZE = 16
 
 def gen_keyfile(in_file,password):

@@ -252,14 +252,29 @@ from meeting with duke, to do:
 - if multiple wearables in house, the addresses of all the wearables have to be stored in the config files (on elephant)
   **done**
 - docking station code is out, so add that firmware and deployment section
-
+  **done**
 - the elephant needs the mqtt topic it needs to pub to
   <HID>\<EID>
   The JSON packet should include what wearable it came from i think
   not sure how we're going to distinguish if theres multiple wearables in the house how we can tell which data comes from which wearable, and how we pass that onto the nuc.
   **done**
 - the elephant needs the broker address (not sure how to do this yet)
-
+  **done**
 - confirm whether the wearable requires the addresses to be inputted as big or little endian
+  done as big endian and thats whats in the addresses currently
+  (gdb) x/s 0x0004c7b8
+  0x4c7b8: "C0:54:52:53:00:00"
+  (gdb) x/17bx 0x0004c7b8
+  0x4c7b8: 0x43 0x30 0x3a 0x35 0x34 0x3a 0x35 0x32
+  0x4c7c0: 0x3a 0x35 0x33 0x3a 0x30 0x30 0x3a 0x30
+  0x4c7c8: 0x30
+  **done**
 
-> > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021
+# 03/07/25
+
+- need to add a section for NUC
+- ip addresses: 0.0.0.0 to 255.255.255.255
+- max number of houses = 254
+- not sure if the NUC needs the wearable addresses
+
+  > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021

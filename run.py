@@ -20,8 +20,10 @@ DEFAULT_DEPLOY_VERSION = 'elmer.4' # Set here the default version to deploy
 PROJECT = 1 # 0 for IRC-SPHERE
 
 DEVICE_OFFSET_ELEPHANT = 1
-DEVICE_OFFSET_TRUNK = 128
-DEVICE_OFFSET_WEARABLE = 192
+DEVICE_OFFSET_TRUNK = 65
+DEVICE_OFFSET_WEARABLE = 129
+DEVICE_OFFSET_DOCKING_STATION = 131
+DEVICE_OFFSET_NUC = 132
 
 
 MEM_OFFSET_WEARABLE_STATIC_ADDR = "0x0004c85c"               # in the form C0:54:53:52:00:00'NULL' aka 18 bytes long
@@ -98,29 +100,73 @@ def make_qrcode(directory_qr, lf, addr, device_type, count, c):
 
 def make_wearable_addr(network, device, be = True):
     if be == True:
-        mac_addr = "EE545253" + "%.2x" % (network) + "%.2x" % (device) # Big-endian
+        mac_addr = "EE:54:52:53:" + "%.2x" % (network) + ":" + "%.2x" % (device) # Big-endian
     else:
-        mac_addr = "%.2x" % (device) + "%.4x" % (network) + "535254EE" # Little-endian
+        mac_addr = "%.2x" % (device) + ":" + "%.4x" % (network) + ":53:52:54:EE" # Little-endian
     return mac_addr
 
 
 def make_ble_addr(network, device, be = True):
     if be == True:
-        BLE_addr = "C0545253" + "%.2x" % (network) + "%.2x" % (device) # Big-endian
+        BLE_addr = "C0:54:52:53:" + "%.2x" % (network) + ":" + "%.2x" % (device) # Big-endian
     else:
-        BLE_addr = "%.2x" % (device) + "%.2x" % (network) + "535254C0" # Little-endian
+        BLE_addr = "%.2x" % (device) + ":" + "%.2x" % (network) + ":53:52:54:C0" # Little-endian
     return BLE_addr
 
 
-def make_image(network, keys, houseID, wearable_addr_le, ble_addr_le, insertions, filename, directory, addr, device_type, tc):
+def make_ip_addr(network, device):
+    ip_addr = "54.52."+ "%.2x" % (network) + "." + "%.2x" % (device)
+    return ip_addr
+
+
+def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, insertions, filename, directory, addr, device_type, tc):
     if device_type == "E":
         config = {
             "device": f"{device_type}{tc:02d}_{addr}",
             "key": get_key(network, keys).hex(),
-            "wearable_addresses": [":".join(addr[i:i+2] for i in range(0, len(addr), 2)) for addr in wearable_addr_le],
-            "ble_address": ":".join(ble_addr_le[i:i+2] for i in range(0, len(ble_addr_le), 2)),
-            "mqtt_topic": f"{houseID}\{addr}"
-            # "firmware": join(directory_firmware, filename)
+            "wearable_addresses": wearable_addr_be,
+            "ble_address": ble_addr_be,
+            "mqtt_topic": f"{houseID}/{addr}",
+            "broker_ip_addr": nuc_addr,
+            "broker_port": 1883
+        }
+
+        config_path = join(directory, f"{device_type}{tc:02d}_{addr}" +  ".json")
+        with open(config_path, 'w') as config_file:
+            json.dump(config, config_file, indent=4)
+    
+    elif device_type == "T":
+        label = f"{device_type}{tc:02d}_{addr}"
+
+        input_image = join(directory_firmware, filename)  # now uses passed filename
+        output_image = join(directory, f"{label}.hex")
+        shutil.copyfile(input_image, output_image)
+
+        qr_data = f"Trunk Device\nLabel: {label}\nMAC: {addr}"
+        make_qrcode(qr_data, )
+
+    elif device_type == "N":
+        config = {
+            "device": f"{device_type}{tc:02d}_{addr}",
+            "wearable_addresses": wearable_addr_be,
+            "ble_addresses": ble_addr_be,
+            "mqtt_topics": [f"{houseID}/{ble_addr.replace(":", "")}" for ble_addr in ble_addr_be],
+            "broker_ip_addr": nuc_addr,
+            "static_ip": True,
+            "broker_port": 1883
+        }
+
+        config_path = join(directory, f"{device_type}{tc:02d}_{addr}" +  ".json")
+        with open(config_path, 'w') as config_file:
+            json.dump(config, config_file, indent=4)
+
+    elif device_type == "D":
+        config = {
+            "device": f"{device_type}{tc:02d}_{addr}",
+            "wearable_addresses": wearable_addr_be,
+            "mqtt_topic": f"{houseID}/{addr}",
+            "broker_ip_addr": nuc_addr,
+            "broker_port": 1883
         }
 
         config_path = join(directory, f"{device_type}{tc:02d}_{addr}" +  ".json")
@@ -130,17 +176,17 @@ def make_image(network, keys, houseID, wearable_addr_le, ble_addr_le, insertions
     else:
         offset_map = {
             "key": binascii.unhexlify(get_key(network, keys)),
-            "wearable_addr": binascii.unhexlify(wearable_addr_le)
+            "wearable_addr": wearable_addr_be.encode('ascii')
         }
 
-        for i, ble in enumerate(ble_addr_le):
-            offset_map[f"ble_addrs_{i}"] = binascii.unhexlify(ble)
+        for i, ble in enumerate(ble_addr_be):
+            offset_map[f"ble_addrs_{i}"] = ble.encode('ascii')
 
         cmd = ["srec_cat"]
 
         for idx, (offset, label) in enumerate(insertions):
             if label == "ble_addrs":
-                for i in range(len(ble_addr_le)):
+                for i in range(len(ble_addr_be)):
                     bin_file = f"{label}_{i}.bin"
                     with open(bin_file, 'wb') as f:
                         f.write(offset_map[f"{label}_{i}"])
@@ -155,7 +201,7 @@ def make_image(network, keys, houseID, wearable_addr_le, ble_addr_le, insertions
 
         for offset, label in insertions:
             if label == "ble_addrs":
-                for i in range(len(ble_addr_le)):
+                for i in range(len(ble_addr_be)):
                     end = hex(int(offset[i], 16) + len(offset_map[f"{label}_{i}"]))
                     cmd += ["-exclude", offset[i], end]
             else:
@@ -169,7 +215,7 @@ def make_image(network, keys, houseID, wearable_addr_le, ble_addr_le, insertions
 
         for _, label in insertions:
             if label == "ble_addrs":
-                for i in range(len(ble_addr_le)):
+                for i in range(len(ble_addr_be)):
                     os.remove(f"{label}_{i}.bin")
             else:
                 os.remove(f"{label}.bin")
@@ -197,8 +243,8 @@ config = configparser.ConfigParser()
 config.read(join("config", config_file))
 
 total_elephants = int(config.get("DEFAULT", "total_elephants"))
-if total_elephants < 0 or total_elephants > 62:
-    print("Incorrect number of elephants. Use [0-62].")
+if total_elephants < 0 or total_elephants > 64:
+    print("Incorrect number of elephants. Use [0-64].")
     sys.exit(1)
 
 total_trunks = int(config.get("DEFAULT", "total_trunks"))
@@ -207,22 +253,33 @@ if total_trunks < 0 or total_trunks > 64:
     sys.exit(1)
 
 total_wearables = int(config.get("DEFAULT", "total_wearables"))
-if total_wearables < 0 or total_wearables > 64:
-    print("Incorrect number of wearables. Use [0-64].")
+if total_wearables < 0 or total_wearables > 2:
+    print("Incorrect number of wearables. Use [0-2].")
     sys.exit(1)
+
+total_nucs = int(config.get("DEFAULT", "total_nucs"))
+if total_nucs < 0 or total_nucs > 1:
+    print("Incorrect number of NUCs. Use [0-1].")
+    sys.exit(1)
+
+total_docks = int(config.get("DEFAULT", "total_docking_stations"))
+if total_docks < 0 or total_docks > 1:
+    print("Incorrect number of Docking Stations. Use [0-1].")
+    sys.exit(1)
+
 
 # Deploy Version
 deploy_version = DEFAULT_DEPLOY_VERSION
 directory_firmware = join("firmware", deploy_version)
 
 if not os.path.exists(directory_firmware):
-    print("#cannot find firmware directory: " + directory_firmware)
+    print("Cannot find firmware directory: " + directory_firmware)
     sys.exit(1)
 
 print("Using system version: " + deploy_version)
 
-Wearable_Firmware_Filename = "zephyr_full.hex"
-# Trunk_Firmware_Filename = "G2_full.hex"
+Wearable_Firmware_Filename = "TRS_W_full.hex"
+Trunk_Firmware_Filename = "TRS_T_full.hex"
 
 # convert house ID to network ID
 network = -1
@@ -290,20 +347,19 @@ print("Date: " + datetime.date.today().strftime('%Y-%m-%d'))
 
 device_count = 0
 
-# ELEPHANTS - in progress
+# ELEPHANTS
 print("Total Elephants: " + str(total_elephants))
-BLE_addr_le = []
+BLE_addr_be = []
+elephant_label_addr = []
 for elephant_count in range(0,total_elephants):
     device_count = device_count + 1
 
     device = DEVICE_OFFSET_ELEPHANT + elephant_count
 
-    label_addr = make_ble_addr(network, device)
+    label_addr = make_ble_addr(network, device).replace(":", "")
+    elephant_label_addr.append(label_addr)
 
-    BLE_addr_le.append(make_ble_addr(network, device))
-    # wearable_addr_le =  make_wearable_addr(network, device)
-
-    # make_image(network, keys, wearable_addr_le, BLE_addr_le, "", Wearable_Firmware_Filename, directory_img, label_addr, "E", device_count, elephant_count)
+    BLE_addr_be.append(make_ble_addr(network, device))
 
     af.write(label_addr + "\n")
 
@@ -311,52 +367,47 @@ for elephant_count in range(0,total_elephants):
 
     print("[Device: " + "%.3d" % (device) + "] Image created. Elephant: " + label_addr)   
 
-# # TRUNKS
-# call(["srec_cat", join(directory_firmware, "G2.hex"), "-intel", join(directory_firmware, "G2Stack.hex"), "-intel", "-o", join(directory_firmware, Trunk_Firmware_Filename), "-intel"])   
+# TRUNKS
+shutil.copyfile(
+    join(directory_firmware, "TRS_T.hex"),
+    join(directory_firmware, Wearable_Firmware_Filename)
+)
 
-# print("Total Trunks: " + str(total_trunks))
-# for trunk_count in range(0,total_trunks):
-#     device_count = device_count + 1
+print("Total Trunks: " + str(total_trunks))
+trunk_label_addr = []
+for trunk_count in range(0,total_trunks):
+    device_count = device_count + 1
 
-#     device = DEVICE_OFFSET_TRUNK + trunk_count
+    device = DEVICE_OFFSET_TRUNK + trunk_count
 
-#     label_addr = make_ble_addr(network, device)
+    label_addr = make_ble_addr(network, device)
+    trunk_label_addr.append(label_addr)
 
-#     BLE_addr_le = make_ble_addr(network, device, False)
-#     MAC_addr_le =  make_mac_addr(network, device, False)
+    af.write(label_addr + "\n")
 
-#     make_image(network, keys, MAC_addr_le, BLE_addr_le, MEM_OFFSET_TRUNK, MEM_OFFSET_TRUNK_END, Trunk_Firmware_Filename, directory_img, label_addr, "T", device_count, trunk_count)
+    make_qrcode(directory_qr, lf, label_addr, "T", device_count, trunk_count)
 
-#     af.write(label_addr + "\n")
-
-#     make_qrcode(directory_qr, lf, label_addr, "T", device_count, trunk_count)
-
-#     print("[Device: " + "%.3d" % (device) + "] Image created. Trunk: " + label_addr)   
+    print("[Device: " + "%.3d" % (device) + "] Image created. Trunk: " + label_addr)   
 
 # WEARABLES
 shutil.copyfile(
-    join(directory_firmware, "zephyr.hex"),
+    join(directory_firmware, "TRS_W.hex"),
     join(directory_firmware, Wearable_Firmware_Filename)
 )
 
 print("Total Wearables: " + str(total_wearables))
 
-wearable_addr_le = []
+wearable_addr_be = []
+wearable_label_addr = []
 for wearable_count in range(0,total_wearables):
     device_count = device_count + 1
 
     device = DEVICE_OFFSET_WEARABLE + wearable_count
 
-    label_addr = make_wearable_addr(network, device)
+    label_addr = make_wearable_addr(network, device).replace(":", "")
+    wearable_label_addr.append(label_addr)
 
-    # BLE_addr_le = make_ble_addr(network, device)                    # Big Endian
-    wearable_addr_le.append(make_wearable_addr(network, device))         # Big Endian
-
-    # make_image(network, keys, wearable_addr_le, BLE_addr_le, [
-    #     (MEM_OFFSET_WEARABLE_STATIC_ADDR, "wearable_addr"),
-    #     (MEM_OFFSET_WEARABLE_TARGET_AP_ADDR, "ble_addr"),
-    #     (MEM_OFFSET_WEARABLE_AES_KEY_ADDR, "key")
-    # ], Wearable_Firmware_Filename, directory_img, label_addr, "W", device_count, wearable_count)
+    wearable_addr_be.append(make_wearable_addr(network, device))         # Big Endian
 
     af.write(label_addr + "\n")
 
@@ -364,20 +415,61 @@ for wearable_count in range(0,total_wearables):
 
     print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + label_addr)    
 
+# DOCKING STATION
+print("Total Docking Stations: " + str(total_docks))
+for dock_count in range(0,total_docks):
+    device_count = device_count + 1
+
+    device = DEVICE_OFFSET_DOCKING_STATION + dock_count
+
+    label_addr = make_ip_addr(network, device).replace(".", "")
+    dock_label_addr = label_addr
+
+    dock_addr = make_ip_addr(network, device)
+
+    af.write(label_addr + "\n")
+
+    make_qrcode(directory_qr, lf, label_addr, "D", device_count, dock_count)
+
+    print("[Device: " + "%.3d" % (device) + "] Image created. Docking Station: " + label_addr)
+
+# NUC
+print("Total NUCs: " + str(total_nucs))
+for nuc_count in range(0,total_nucs):
+    device_count = device_count + 1
+
+    device = DEVICE_OFFSET_NUC + nuc_count
+
+    label_addr = make_ip_addr(network, device).replace(".", "")
+    nuc_label_addr = label_addr
+
+    NUC_addr = make_ip_addr(network, device)
+
+    af.write(label_addr + "\n")
+
+    make_qrcode(directory_qr, lf, label_addr, "N", device_count, nuc_count)
+
+    print("[Device: " + "%.3d" % (device) + "] Image created. NUC: " + label_addr)   
+
 
 # MAKE IMAGES
 # ELEPHANTS
-for el in range(len(BLE_addr_le)):
-    make_image(network, keys, house_string, wearable_addr_le, BLE_addr_le[el], "", "", directory_img, BLE_addr_le[el], "E", el)
+for el in range(len(BLE_addr_be)):
+    make_image(network, keys, house_string, wearable_addr_be, BLE_addr_be[el], NUC_addr, "", "", directory_img, elephant_label_addr[el], "E", el)
 
 # WEARABLES
-for wear in range(len(wearable_addr_le)):
-    make_image(network, keys, house_string, wearable_addr_le[wear], BLE_addr_le, [
+for wear in range(len(wearable_addr_be)):
+    make_image(network, keys, house_string, wearable_addr_be[wear], BLE_addr_be, "", [
         (MEM_OFFSET_WEARABLE_STATIC_ADDR, "wearable_addr"),
         (MEM_OFFSET_WEARABLE_TARGET_AP_ADDRS, "ble_addrs"),
         (MEM_OFFSET_WEARABLE_AES_KEY_ADDR, "key")
-    ], Wearable_Firmware_Filename, directory_img, wearable_addr_le[wear], "W", wear)
+    ], Wearable_Firmware_Filename, directory_img, wearable_label_addr[wear], "W", wear)
 
+# DOCKING STATIONS
+make_image(network, "", house_string, wearable_addr_be, BLE_addr_be, NUC_addr, "", "", directory_img, dock_label_addr, "D", dock_count)
+
+# NUCS
+make_image(network, keys, house_string, wearable_addr_be, BLE_addr_be, NUC_addr, "", "", directory_img, nuc_label_addr, "N", nuc_count)
 
 af.close()
 lf.write("\\end{document}\n")
