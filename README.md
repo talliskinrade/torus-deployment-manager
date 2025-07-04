@@ -277,4 +277,14 @@ from meeting with duke, to do:
 - max number of houses = 254
 - not sure if the NUC needs the wearable addresses
 
-  > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021
+# 04/07/25
+
+- The Internet Assigned Numbers Authority (IANA) has reserved the
+  following three blocks of the IP address space for private internets:
+  10.0.0.0 - 10.255.255.255 (10/8 prefix)
+  172.16.0.0 - 172.31.255.255 (172.16/12 prefix)
+  192.168.0.0 - 192.168.255.255 (192.168/16 prefix)
+  An enterprise that decides to use IP addresses out of the address
+  space defined in this document can do so without any coordination
+  with IANA or an Internet registry.
+- > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021
