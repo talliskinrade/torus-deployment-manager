@@ -74,6 +74,8 @@ def git_clone_or_pull():
         "https://github.com/shuhao-dong/wearable_dock.git": "firmware/docking_station"
     }
 
+    print("Updating Firmware:")
+
     for url, path in repos.items():
         if os.path.isdir(path):
             # Pull from Git
@@ -203,7 +205,7 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
             "--ap", *ble_addr_be,
             "--key", get_key(network, keys),
             "--out", str(output_file)
-        ], check=True)
+        ], check=True, stdout=subprocess.DEVNULL)
 
         destination_dir.mkdir(parents=True, exist_ok=True)
 
