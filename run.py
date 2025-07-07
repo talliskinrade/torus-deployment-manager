@@ -68,6 +68,23 @@ def get_key(networkID,keys_hex):
     return keys_hex[(networkID*16)*2:((networkID+1)*16)*2]
 
 
+def git_clone_or_pull():
+    repos = {
+        "https://github.com/shuhao-dong/BORUS.git": "firmware/wearable",
+        "https://github.com/shuhao-dong/ble-scan-advertise.git": "firmware/elephants",
+        "https://github.com/shuhao-dong/wearable_dock.git": "firmware/docking_station"
+    }
+
+    for url, path in repos.items():
+        if os.path.isdir(path):
+            # Pull from Git
+            subprocess.run(["git", "-C", path, "pull"], check=True)
+        else:
+            # Clone from Git
+            subprocess.run(["git", "clone", url, path], check=True)
+
+
+
 def make_qrcode(directory_qr, lf, addr, device_type, count, c):
     qr=qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
     m = ':'.join(addr[i:i+2] for i in range(0,len(addr),2))
@@ -316,11 +333,14 @@ if total_docks < 0 or total_docks > 1:
 # Deploy Version
 directory_firmware = "firmware" # Set here the default version to deploy
 
+# Update or clone necessary firmware repositories
+git_clone_or_pull()
+
 if not os.path.exists(directory_firmware):
     print("Cannot find firmware directory: " + directory_firmware)
     sys.exit(1)
 
-print("Using system version: " + deploy_version)
+# print("Using system version: " + deploy_version)
 
 Wearable_Firmware_Filename = "zephyr.hex"
 Trunk_Firmware_Filename = "TRS_T.hex"
