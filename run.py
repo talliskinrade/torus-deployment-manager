@@ -14,9 +14,8 @@ import csv
 from os.path import join
 import shutil
 import json
-from imgtool.image import Image
-from imgtool.keys import load
 import subprocess
+from pathlib import Path
 
 directory_firmware = "firmware" # Set here the default version to deploy
 
@@ -140,11 +139,11 @@ def make_ip_addr(network, device):
     return ip_addr
 
 
-def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, insertions, filename, directory, addr, device_type, tc):
+def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, filename, directory, addr, device_type, tc):
     if device_type == "E": # RASPBERRY PI FORWARDING GATEWAYS
         config = {
             "device": f"{device_type}{tc:02d}_{addr}",
-            "key": get_key(network, keys).hex(),
+            "key": str(get_key(network, keys)),
             "wearable_addresses": wearable_addr_be,
             "ble_address": ble_addr_be,
             "mqtt_topic": f"{houseID}/{addr}",
@@ -190,96 +189,25 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
             json.dump(config, config_file, indent=4)
     
     else: # WEARABLE
-        # map data labels to their binary values
-        offset_map = {
-            "key": binascii.unhexlify(get_key(network, keys)),
-            "wearable_addr": wearable_addr_be.encode('ascii')
-        }
+        # Paths
+        root = Path(__file__).parent
+        script_path = root / "firmware" / "wearable" / "tools" / "factory_data_generator" / "mk_factory_page.py"
+        output_file = root / (str(addr)+"_factory_data.hex")
+        destination_dir = root / "out" / "0000" / "img"
+        destination_file = destination_dir / (str(addr)+"_factory_data.hex")
 
-        # add ble addresses to the map with a unique label
-        for i, ble in enumerate(ble_addr_be):
-            offset_map[f"ble_addrs_{i}"] = ble.encode('ascii')
-
-        # start building the srec_cat command for firmware patching
-        cmd = ["srec_cat"]
-
-        # # generate binary files for each insertion and append them to the srec_cat command
-        for idx, (offset, label) in enumerate(insertions):
-            if label == "ble_addrs":
-                # insert multiple ble addresses at different offsets
-                for i in range(len(ble_addr_be)):
-                    bin_file = f"{label}_{i}.bin"
-                    with open(bin_file, 'wb') as f:
-                        f.write(offset_map[f"{label}_{i}"])                 # write each ble address to its own binary file
-                    cmd += [bin_file, "-binary", "-offset", offset[i]]      # add binary file to the srec_cat command with its offset
-            else:
-                # insert wearable address
-                bin_file = f"{label}.bin"
-                with open(bin_file, 'wb') as f:
-                    f.write(offset_map[label])                              # write the wearable address
-                cmd += [bin_file, "-binary", "-offset", offset]             # add to the srec_cat command with its offset
-
-        # append the original firmware file to the srec_cat command
-        cmd += [join(directory_firmware, filename), "-intel"]
-
-        # # exclude patched regions from the original firmware to avoid overlap
-        for offset, label in insertions:
-            if label == "ble_addrs":
-                for i in range(len(ble_addr_be)):
-                    end = hex(int(offset[i], 16) + len(offset_map[f"{label}_{i}"]))     # calculate end address of inserted data
-                    cmd += ["-exclude", offset[i], end]
-            else:
-                end = hex(int(offset, 16) + len(offset_map[label]))
-                cmd += ["-exclude", offset, end]
-
-
-        # set output file name and format
-        output_file = join(directory, f"{device_type}{tc:02d}_{addr}.hex")      # calculate end address of single-value inserted data
-        cmd += ["-o", output_file, "-intel"]
-
-        # generate patched firmware
-        call(cmd)
-
-        # clean up temporary binary files
-        for _, label in insertions:
-            if label == "ble_addrs":
-                for i in range(len(ble_addr_be)):
-                    os.remove(f"{label}_{i}.bin")
-            else:
-                os.remove(f"{label}.bin")
-        
-
-        # Convert to binary
-        hex_path = output_file
-        bin_path = hex_path.replace(".hex", ".bin")
-        call(["srec_cat", hex_path, "-intel", "-o", bin_path, "-binary"])
-
-        # Sign the binary image
-        key = load("firmware/root-rsa-2048.pem")
-        img = Image(version="1.0.0", header_size=0x200, slot_size=0x80000, align=4, pad_header=True)
-        signed_bin_path = bin_path.replace(".bin", "_signed.bin")
-
-        # Set up signing arguments
         subprocess.run([
-            r"C:\Users\talli\AppData\Roaming\Python\Python313\Scripts\imgtool.exe", "sign",
-            "--key", "firmware/root-rsa-2048.pem",
-            "--header-size", "512",   # 0x200
-            "--align", "4",
-            "--version", "1.0.0",
-            "--slot-size", "524288",  # 0x80000
-            "--pad-header",
-            "--pad",
-            bin_path,
-            signed_bin_path
+            "python",
+            str(script_path),
+            "--ble", wearable_addr_be,
+            "--ap", *ble_addr_be,
+            "--key", get_key(network, keys),
+            "--out", str(output_file)
         ], check=True)
 
-        # Convert back to hex
-        signed_hex_path = signed_bin_path.replace(".bin", ".hex")
-        call(["srec_cat", signed_bin_path, "-binary", "-o", signed_hex_path, "-intel"])
+        destination_dir.mkdir(parents=True, exist_ok=True)
 
-        # Clean up binary files
-        os.remove(bin_path)
-        os.remove(signed_bin_path)
+        shutil.move(str(output_file), str(destination_file))
 
 
 
@@ -500,40 +428,25 @@ for nuc_count in range(0,total_nucs):
 # MAKE IMAGES
 # ELEPHANTS
 for el in range(len(BLE_addr_be)):
-    make_image(network, keys, house_string, wearable_addr_be, BLE_addr_be[el], NUC_addr, "", "", directory_img, elephant_label_addr[el], "E", el)
+    make_image(network, keys, house_string, wearable_addr_be, BLE_addr_be[el], NUC_addr, "", directory_img, elephant_label_addr[el], "E", el)
     print("[Device: " + "%.3d" % (device) + "] Image created. Elephant: " + elephant_label_addr[el].replace(":", ""))   
 
 # TRUNKS
 for tr in range(len(trunk_label_addr)):
-    make_image(network, keys, house_string, "", "", "", "", Trunk_Firmware_Filename, directory_img, trunk_label_addr[tr], "T", tr)
+    make_image(network, keys, house_string, "", "", "", Trunk_Firmware_Filename, directory_img, trunk_label_addr[tr], "T", tr)
     print("[Device: " + "%.3d" % (device) + "] Image created. Trunk: " + trunk_label_addr[tr].replace(":", ""))   
 
 # WEARABLES
-# for wear in range(len(wearable_addr_be)):
-#     make_image(network, keys, house_string, wearable_addr_be[wear], BLE_addr_be, "", [
-#         (MEM_OFFSET_WEARABLE_STATIC_ADDR, "wearable_addr"),
-#         (MEM_OFFSET_WEARABLE_TARGET_AP_ADDRS, "ble_addrs"),
-#         (MEM_OFFSET_WEARABLE_AES_KEY_ADDR, "key")
-#     ], Wearable_Firmware_Filename, directory_img, wearable_label_addr[wear], "W", wear)
-#     print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + wearable_label_addr[wear].replace(":", ""))    
-
 for wear in range(len(wearable_addr_be)):
-    # make_image(network, keys, house_string, wearable_addr_be[wear], "", "", [
-    #     (MEM_OFFSET_WEARABLE_STATIC_ADDR, "wearable_addr"),
-    #     (MEM_OFFSET_WEARABLE_TARGET_AP_ADDRS, "ble_addrs"),
-    #     (MEM_OFFSET_WEARABLE_AES_KEY_ADDR, "key")
-    # ], Wearable_Firmware_Filename, directory_img, wearable_label_addr[wear], "W", wear)
-    make_image(network, keys, house_string, wearable_addr_be[wear], "", "", [
-        (MEM_OFFSET_WEARABLE_STATIC_ADDR, "wearable_addr"),
-    ], Wearable_Firmware_Filename, directory_img, wearable_label_addr[wear], "W", wear)
+    make_image(network, keys, house_string, wearable_addr_be[wear], BLE_addr_be, "", Wearable_Firmware_Filename, directory_img, wearable_label_addr[wear], "W", wear)
     print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + wearable_label_addr[wear].replace(":", ""))   
 
 # DOCKING STATIONS
-make_image(network, "", house_string, wearable_addr_be, BLE_addr_be, NUC_addr, "", "", directory_img, dock_label_addr, "D", dock_count)
+make_image(network, "", house_string, wearable_addr_be, BLE_addr_be, NUC_addr, "", directory_img, dock_label_addr, "D", dock_count)
 print("[Device: " + "%.3d" % (device) + "] Image created. Docking Station: " + dock_label_addr.replace(":", ""))
 
 # NUCS
-make_image(network, keys, house_string, wearable_addr_be, BLE_addr_be, NUC_addr, "", "", directory_img, nuc_label_addr, "N", nuc_count)
+make_image(network, keys, house_string, wearable_addr_be, BLE_addr_be, NUC_addr, "", directory_img, nuc_label_addr, "N", nuc_count)
 print("[Device: " + "%.3d" % (device) + "] Image created. NUC: " + nuc_label_addr.replace(":", "")) 
 
 af.close()
