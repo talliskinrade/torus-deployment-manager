@@ -14,8 +14,11 @@ import csv
 from os.path import join
 import shutil
 import json
+from imgtool.image import Image
+from imgtool.keys import load
+import subprocess
 
-DEFAULT_DEPLOY_VERSION = 'elmer.4' # Set here the default version to deploy
+directory_firmware = "firmware" # Set here the default version to deploy
 
 PROJECT = 1 # 0 for IRC-SPHERE
 
@@ -121,7 +124,7 @@ def make_ip_addr(network, device):
 
 
 def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, insertions, filename, directory, addr, device_type, tc):
-    if device_type == "E":
+    if device_type == "E": # RASPBERRY PI FORWARDING GATEWAYS
         config = {
             "device": f"{device_type}{tc:02d}_{addr}",
             "key": get_key(network, keys).hex(),
@@ -136,12 +139,12 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
         with open(config_path, 'w') as config_file:
             json.dump(config, config_file, indent=4)
     
-    elif device_type == "T":
+    elif device_type == "T": # DONGLES
         input_file = join(directory_firmware, filename)
         output_file = join(directory, f"{device_type}{tc:02d}_{addr}.hex")
         shutil.copyfile(input_file, output_file)
         
-    elif device_type == "N":
+    elif device_type == "N": # NUC
         config = {
             "device": f"{device_type}{tc:02d}_{addr}",
             "wearable_addresses": wearable_addr_be,
@@ -156,7 +159,7 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
         with open(config_path, 'w') as config_file:
             json.dump(config, config_file, indent=4)
 
-    elif device_type == "D":
+    elif device_type == "D": # DOCKING STATION
         config = {
             "device": f"{device_type}{tc:02d}_{addr}",
             "wearable_addresses": wearable_addr_be,
@@ -169,7 +172,7 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
         with open(config_path, 'w') as config_file:
             json.dump(config, config_file, indent=4)
     
-    else:
+    else: # WEARABLE
         # map data labels to their binary values
         offset_map = {
             "key": binascii.unhexlify(get_key(network, keys)),
@@ -183,7 +186,7 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
         # start building the srec_cat command for firmware patching
         cmd = ["srec_cat"]
 
-        # generate binary files for each insertion and append them to the srec_cat command
+        # # generate binary files for each insertion and append them to the srec_cat command
         for idx, (offset, label) in enumerate(insertions):
             if label == "ble_addrs":
                 # insert multiple ble addresses at different offsets
@@ -202,7 +205,7 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
         # append the original firmware file to the srec_cat command
         cmd += [join(directory_firmware, filename), "-intel"]
 
-        # exclude patched regions from the original firmware to avoid overlap
+        # # exclude patched regions from the original firmware to avoid overlap
         for offset, label in insertions:
             if label == "ble_addrs":
                 for i in range(len(ble_addr_be)):
@@ -211,6 +214,7 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
             else:
                 end = hex(int(offset, 16) + len(offset_map[label]))
                 cmd += ["-exclude", offset, end]
+
 
         # set output file name and format
         output_file = join(directory, f"{device_type}{tc:02d}_{addr}.hex")      # calculate end address of single-value inserted data
@@ -226,6 +230,40 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
                     os.remove(f"{label}_{i}.bin")
             else:
                 os.remove(f"{label}.bin")
+        
+
+        # Convert to binary
+        hex_path = output_file
+        bin_path = hex_path.replace(".hex", ".bin")
+        call(["srec_cat", hex_path, "-intel", "-o", bin_path, "-binary"])
+
+        # Sign the binary image
+        key = load("firmware/root-rsa-2048.pem")
+        img = Image(version="1.0.0", header_size=0x200, slot_size=0x80000, align=4, pad_header=True)
+        signed_bin_path = bin_path.replace(".bin", "_signed.bin")
+
+        # Set up signing arguments
+        subprocess.run([
+            r"C:\Users\talli\AppData\Roaming\Python\Python313\Scripts\imgtool.exe", "sign",
+            "--key", "firmware/root-rsa-2048.pem",
+            "--header-size", "512",   # 0x200
+            "--align", "4",
+            "--version", "1.0.0",
+            "--slot-size", "524288",  # 0x80000
+            "--pad-header",
+            "--pad",
+            bin_path,
+            signed_bin_path
+        ], check=True)
+
+        # Convert back to hex
+        signed_hex_path = signed_bin_path.replace(".bin", ".hex")
+        call(["srec_cat", signed_bin_path, "-binary", "-o", signed_hex_path, "-intel"])
+
+        # Clean up binary files
+        os.remove(bin_path)
+        os.remove(signed_bin_path)
+
 
 
 ###########################################################################################
@@ -276,8 +314,7 @@ if total_docks < 0 or total_docks > 1:
 
 
 # Deploy Version
-deploy_version = DEFAULT_DEPLOY_VERSION
-directory_firmware = join("firmware", deploy_version)
+directory_firmware = "firmware" # Set here the default version to deploy
 
 if not os.path.exists(directory_firmware):
     print("Cannot find firmware directory: " + directory_firmware)
@@ -285,7 +322,7 @@ if not os.path.exists(directory_firmware):
 
 print("Using system version: " + deploy_version)
 
-Wearable_Firmware_Filename = "TRS_W.hex"
+Wearable_Firmware_Filename = "zephyr.hex"
 Trunk_Firmware_Filename = "TRS_T.hex"
 
 # convert house ID to network ID
@@ -397,10 +434,10 @@ for wearable_count in range(0,total_wearables):
 
     device = DEVICE_OFFSET_WEARABLE + wearable_count
 
-    label_addr = make_wearable_addr(network, device).replace(":", "")
+    label_addr = make_wearable_addr(network, 1).replace(":", "")
     wearable_label_addr.append(label_addr)
 
-    wearable_addr_be.append(make_wearable_addr(network, device))         # Big Endian
+    wearable_addr_be.append(make_wearable_addr(network, 1))         # Big Endian
 
     af.write(label_addr + "\n")
 
@@ -452,13 +489,24 @@ for tr in range(len(trunk_label_addr)):
     print("[Device: " + "%.3d" % (device) + "] Image created. Trunk: " + trunk_label_addr[tr].replace(":", ""))   
 
 # WEARABLES
+# for wear in range(len(wearable_addr_be)):
+#     make_image(network, keys, house_string, wearable_addr_be[wear], BLE_addr_be, "", [
+#         (MEM_OFFSET_WEARABLE_STATIC_ADDR, "wearable_addr"),
+#         (MEM_OFFSET_WEARABLE_TARGET_AP_ADDRS, "ble_addrs"),
+#         (MEM_OFFSET_WEARABLE_AES_KEY_ADDR, "key")
+#     ], Wearable_Firmware_Filename, directory_img, wearable_label_addr[wear], "W", wear)
+#     print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + wearable_label_addr[wear].replace(":", ""))    
+
 for wear in range(len(wearable_addr_be)):
-    make_image(network, keys, house_string, wearable_addr_be[wear], BLE_addr_be, "", [
+    # make_image(network, keys, house_string, wearable_addr_be[wear], "", "", [
+    #     (MEM_OFFSET_WEARABLE_STATIC_ADDR, "wearable_addr"),
+    #     (MEM_OFFSET_WEARABLE_TARGET_AP_ADDRS, "ble_addrs"),
+    #     (MEM_OFFSET_WEARABLE_AES_KEY_ADDR, "key")
+    # ], Wearable_Firmware_Filename, directory_img, wearable_label_addr[wear], "W", wear)
+    make_image(network, keys, house_string, wearable_addr_be[wear], "", "", [
         (MEM_OFFSET_WEARABLE_STATIC_ADDR, "wearable_addr"),
-        (MEM_OFFSET_WEARABLE_TARGET_AP_ADDRS, "ble_addrs"),
-        (MEM_OFFSET_WEARABLE_AES_KEY_ADDR, "key")
     ], Wearable_Firmware_Filename, directory_img, wearable_label_addr[wear], "W", wear)
-    print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + wearable_label_addr[wear].replace(":", ""))    
+    print("[Device: " + "%.3d" % (device) + "] Image created. Wearable: " + wearable_label_addr[wear].replace(":", ""))   
 
 # DOCKING STATIONS
 make_image(network, "", house_string, wearable_addr_be, BLE_addr_be, NUC_addr, "", "", directory_img, dock_label_addr, "D", dock_count)

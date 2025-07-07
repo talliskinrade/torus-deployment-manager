@@ -290,4 +290,49 @@ from meeting with duke, to do:
   with IANA or an Internet registry.
 - I think the best way of 'reserving' the memory address is assigning them as 00:00:00:00:00, then if it doesn't begin with 'TRS' then ignore
   it.
+
+- only change the wearables address for the wearable
+
+- nrfjprog loop
+
+# 07/07/25
+
+- nrfjprog loop
+  duke added a flash memory to the borus file, which we can use nrfjprog to add hex to each address, and then we've specify where in that section of memory to look for. we can use nrfjprog in the terminal to assign hex values, but we want to see if theres a way to automate it.
+- BORUS/build/BORUS/zephyr/zephyr.signed.hex and BORUS/build/mcubuild/zephyr/zephyr.hex need to be merged
+
+.. code-block:: none
+  torus-deployment-manager/
+    |-**pycache**/
+    |-config/
+      |-0000.cfg
+    |-firmware/
+    |-out/
+      |-0000/
+        |-img/
+        |-qr/
+        |-addresses.txt
+        |-labels.aux
+        |-labels.log
+        |-labels.pdf
+    |-.gitignore
+    |-ckeys
+    |-ckeys.hash
+    |-enc.py
+    |-install.py
+    |-README.md
+    |-run.py
+    |-srec_cat.exe
+    |-torus_network_id.csv
+
+- what do i need to do?
+i need to find a new way to get the software in firmware
+figure out the best way to use the new factory data program with my deployment manager
+see if theres a way for the program to run the: 
+    python mk_factory_page --ble XX:XX:XX:XX:XX:XX \ 
+            --ap C0:54:52:53:00:00 C0:54:52:53:00:01 C0:54:52:53:00:02 \ 
+            --key 9F7B25A06852331C10425E719 \ 
+            --out factory_data.hex
+'command'
+
 - > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021
