@@ -43,9 +43,10 @@ Must be run in Python version that supports Pillow, which is required for QR cod
 >>type config\0000.cfg
 [DEFAULT]
 house_id = 0000
-total_elephants = 4
-total_trunks = 4
-total_wearables = 4
+total_receivers = 6
+total_wearables = 2
+total_docking_stations = 1
+total_nucs = 1
 ```
 
 ## Record of Deployments
@@ -301,11 +302,13 @@ from meeting with duke, to do:
   duke added a flash memory to the borus file, which we can use nrfjprog to add hex to each address, and then we've specify where in that section of memory to look for. we can use nrfjprog in the terminal to assign hex values, but we want to see if theres a way to automate it.
 - BORUS/build/BORUS/zephyr/zephyr.signed.hex and BORUS/build/mcubuild/zephyr/zephyr.hex need to be merged
 
-.. code-block:: none
+```
   torus-deployment-manager/
     |-**pycache**/
+
     |-config/
       |-0000.cfg
+
     |-firmware/
     |-out/
       |-0000/
@@ -315,6 +318,7 @@ from meeting with duke, to do:
         |-labels.aux
         |-labels.log
         |-labels.pdf
+
     |-.gitignore
     |-ckeys
     |-ckeys.hash
@@ -324,15 +328,20 @@ from meeting with duke, to do:
     |-run.py
     |-srec_cat.exe
     |-torus_network_id.csv
+```
 
 - what do i need to do?
-i need to find a new way to get the software in firmware
-figure out the best way to use the new factory data program with my deployment manager
-see if theres a way for the program to run the: 
-    python mk_factory_page --ble XX:XX:XX:XX:XX:XX \ 
-            --ap C0:54:52:53:00:00 C0:54:52:53:00:01 C0:54:52:53:00:02 \ 
-            --key 9F7B25A06852331C10425E719 \ 
-            --out factory_data.hex
-'command'
+  i need to find a new way to get the software in firmware
+  figure out the best way to use the new factory data program with my deployment manager
+  see if theres a way for the program to run the:
+  python mk_factory_page --ble XX:XX:XX:XX:XX:XX \
+  --ap C0:54:52:53:00:00 C0:54:52:53:00:01 C0:54:52:53:00:02 \
+  --key 9F7B25A06852331C10425E719 \
+  --out factory_data.hex
+  'command'
+
+- image needs 3 folders, wearable, receiver and dock
+- get rid of offsets
+- tomorrow: change the source code of the c files for receivers and dock
 
 - > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021
