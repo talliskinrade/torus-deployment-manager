@@ -344,4 +344,9 @@ from meeting with duke, to do:
 - get rid of offsets
 - tomorrow: change the source code of the c files for receivers and dock
 
+# 18/07/25
+- intelhex needs installing for this to work - add an error message (for this and pycryptodome)
+- has to have no firmware or output files initially.
+
+
 - > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021

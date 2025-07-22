@@ -17,6 +17,7 @@ import json
 import subprocess
 from pathlib import Path
 import re
+from intelhex import IntelHex
 
 
 PROJECT = 1 # 0 for IRC-SPHERE
@@ -66,7 +67,16 @@ def git_clone_or_pull():
     for url, path in repos.items():
         if os.path.isdir(path):
             print(f"Pulling updates for {path}...")
-            subprocess.run(["git", "-C", path, "pull"], check=True)
+            subprocess.run(["git", "-C", path, "fetch"], check=True)
+
+            if url in special_branch:
+                branch = special_branch[url]
+                print(f"Switching to branch {branch} in {path}...")
+                subprocess.run(["git", "-C", path, "checkout", branch], check=True)
+                subprocess.run(["git", "-C", path, "pull", "origin", branch], check=True)
+            else:
+                subprocess.run(["git", "-C", path, "pull"], check=True)
+
         else:
             if url in special_branch:
                 branch = special_branch[url]
@@ -435,7 +445,6 @@ for dock_count in range(0,total_docks):
     addr = make_addr("C1", network, device)
     dock_label_addr = addr.replace(":", "")
 
-
     af.write(dock_label_addr + "\n")
 
     make_qrcode(directory_qr, lf, dock_label_addr, "D", device_count, dock_count)
@@ -451,8 +460,6 @@ for nuc_count in range(0,total_nucs):
 
     label_addr = NUC_addr.replace(".", "")
     nuc_label_addr = label_addr
-
-    
 
     af.write(label_addr + "\n")
 
@@ -485,6 +492,6 @@ lf.close()
 print("Creating labels..")
 os.chdir(join("out", house_string,"qr"))
 with open(os.devnull, "w") as fnull:
-    result = call([r"pdflatex", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull) # replace "fire directory" with "pdflatex"
+    result = call([r"pdflatex", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull) 
     result = call([r"pdflatex", "-output-directory=..", "labels.tex"], stdout = fnull, stderr = fnull)   
 print("Labels written in labels.pdf")
