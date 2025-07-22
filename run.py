@@ -366,15 +366,19 @@ finally:
 
 af = open(join(directory, "addresses.txt"), "w")
 
-directory_wearable = join(directory, "wearable")
+directory_img = join(directory, "img")
+if not os.path.exists(directory_img):
+    os.makedirs(directory_img)
+
+directory_wearable = join(directory_img, "wearable")
 if not os.path.exists(directory_wearable):
     os.makedirs(directory_wearable)
 
-directory_receiver = join(directory, "receiver")
+directory_receiver = join(directory_img, "receiver")
 if not os.path.exists(directory_receiver):
     os.makedirs(directory_receiver)
 
-directory_dock = join(directory, "dock")
+directory_dock = join(directory_img, "dock")
 if not os.path.exists(directory_dock):
     os.makedirs(directory_dock)
 
