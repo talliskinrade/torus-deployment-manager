@@ -284,7 +284,7 @@ if len(sys.argv) < 2:
     print("Incorrect input parameters. Set HID.")
     sys.exit(1)
 
-config_file = sys.argv[1] + ".cfg"
+config_file = sys.argv[1] + ".yyaml"
 
 if os.path.isfile(join("config", config_file)) == False:
     print("Configuration file does not exist.")
