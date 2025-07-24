@@ -349,4 +349,15 @@ from meeting with duke, to do:
 - has to have no firmware or output files initially.
 
 
+# 22/07/25
+- vendor_id and product_id, can they be set on the wearable?
+- needs pycryptodomex, not pycryptodome
+- needs "qrcode[pil]"
+- "     input_path = os.path.join("firmware", "receivers", "scan_adv.c")
+        output_path = os.path.join(directory, addr+"_scan_adv.c")             "
+  would be great to have this passed into the function
+
+# 24/07/25
+- in dock, user will have to change as well.
+
 - > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021

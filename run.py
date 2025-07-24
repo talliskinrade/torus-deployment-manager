@@ -55,7 +55,7 @@ def git_clone_or_pull():
     repos = {
         "https://github.com/shuhao-dong/BORUS.git": "firmware/wearable",
         "https://github.com/shuhao-dong/ble-scan-advertise.git": "firmware/receivers",
-        "https://github.com/shuhao-dong/wearable_dock.git": "firmware/docking_station"
+        "https://github.com/JoelDunnett/JORUS.git": "firmware/docking_station"
     }
 
     special_branch = {
@@ -142,93 +142,98 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
         input_path = os.path.join("firmware", "receivers", "scan_adv.c")
         output_path = os.path.join(directory, addr+"_scan_adv.c")
 
-        with open(input_path, 'r') as file:
+        with open(input_path, 'r', encoding='utf-8') as file:
             content = file.read()
         
-        patterns_to_remove = [
-            r'^[ \t]*static\s+const\s+char\s+target_mac\[\]\s*=\s*"[^"]+";[^\n]*$',
-            r'^[ \t]*const\s+char\*\s+target_mac\[\]\s*=\s*\{[^}]*?\};',
-            r'^[ \t]*static\s+const\s+char\s+random_ble_addr\[\]\s*=\s*"[^"]+";\s*$',
-            r'^[ \t]*#define\s+BROKER_ADDR\s+"[^"]+"\s*$',
-            r'^[ \t]*#define\s+MQTT_TOPIC\s+"[^"]+"\s*$',
-            r'static\s+const\s+unsigned\s+char\s+aes_key\[16\]\s*=\s*\{[^}]*?\};'
-        ]
+        patterns_to_replace = {
+            r'(^[ \t]*#define\s+BROKER_ADDR\s+)".*?"(\s*$)': f'\\1"{nuc_addr}"\\2',
+            r'(^[ \t]*#define\s+MQTT_TOPIC\s+)".*?"(\s*$)': f'\\1"{houseID}/{addr}"\\2',
+            r'(static\s+const\s+char\s+random_ble_addr\[\]\s*=\s*)".*?"(\s*;?\s*$)': f'\\1"{ble_addr_be}"\\2',
+        }
 
-        for pattern in patterns_to_remove:
-            content = re.sub(pattern, '', content, flags=re.MULTILINE | re.DOTALL)
-        content = re.sub(r'\n{3,}', '\n\n', content)
+        for pattern, replacement in patterns_to_replace.items():
+            content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
 
         # AES Key
         key = get_key(network, keys).decode("utf-8")    # returns 32-character hex string
         key_bytes = bytes.fromhex(key)                  # convert to 16 bytes
-
         aes_key_c_array = ',\n    '.join(f'0x{b:02X}' for b in key_bytes)
-        aes_key_decl = f'''static const unsigned char aes_key[16] = {{
+
+        aes_key_replacement = f'''static const unsigned char aes_key[16] = {{
             {aes_key_c_array}
         }};'''
 
-        # Receiver Address
-        random_ble_decl = f'static const char random_ble_addr[] = "{ble_addr_be}";'
-
-        # MQTT Topic
-        mqtt_topic_decl = f'#define MQTT_TOPIC "{houseID}/{addr}"'
-
-        # NUC Address
-        broker_decl = f'#define BROKER_ADDR "{nuc_addr}"'
+        content = re.sub(
+            r'static\s+const\s+unsigned\s+char\s+aes_key\[16\]\s*=\s*\{[^}]*?\};',
+            aes_key_replacement,
+            content,
+            flags=re.DOTALL
+        )
 
         # Wearable Address
-        if len(wearable_addr_be) > 1:
-            wear_decl = 'const char* target_mac[] = {\n    '
-            wear_decl += ',\n    '.join(f'"{mac}"' for mac in wearable_addr_be)
-            wear_decl += '\n};'
+        content = re.sub(
+            r'static\s+const\s+char\s+target_mac\[\]\s*=\s*"[^"]+";\s*(/\*.*\*/)?',
+            '',
+            content
+        )
+        content = re.sub(
+            r'const\s+char\*\s+target_mac\[\]\s*=\s*\{[^}]*?\};',
+            '',
+            content,
+            flags=re.DOTALL
+        )
+
+        if len(wearable_addr_be) == 1:
+            target_mac_decl = f'static const char target_mac[] = "{wearable_addr_be[0]}"; /* BORUS wearable */'
         else:
-            wear_decl = f'const char target_mac[] = "{wearable_addr_be[0]}";'
+            target_mac_array = ',\n    '.join(f'"{mac}"' for mac in wearable_addr_be)
+            target_mac_decl = f'const char* target_mac[] = {{\n    {target_mac_array}\n}}; /* BORUS wearable */'
+        
+        insertion_match = re.search(r'static\s+const\s+char\s+random_ble_addr\[\]\s*=\s*".*?";', content)
+        insert_idx = insertion_match.start()
+
+        content = content[:insert_idx] + target_mac_decl + '\n' + content[insert_idx:]
             
-        # Combine all new declarations
-        new_decls = '\n\n'.join([wear_decl, random_ble_decl, broker_decl, mqtt_topic_decl, aes_key_decl])
-
-        # Find a safe place to insert (e.g., after first comment block or includes)
-        insert_idx = None
-        insertion_point = re.search(r'^[ \t]*#define\s+BROKER_PORT\s+\d+', content, flags=re.MULTILINE)
-
-        if insertion_point:
-            insert_idx = insertion_point.end()
-            new_content = content[:insert_idx] + '\n\n' + new_decls + '\n\n' + content[insert_idx:]
-        else:
-            new_content = new_decls + '\n\n' + content
-
-        with open(output_path, 'w') as file:
-            file.write(new_content)
+        with open(output_path, "w", encoding="utf-8") as file:
+            file.write(content)
 
         
-    elif device_type == "N": # NUC
-        config = {
-            "device": f"{device_type}{tc:02d}_{addr}",
-            "wearable_addresses": wearable_addr_be,
-            "ble_addresses": ble_addr_be,
-            "mqtt_topics": [f"{houseID}/{ble_addr.replace(":", "")}" for ble_addr in ble_addr_be],
-            "broker_ip_addr": nuc_addr,
-            "static_ip": True,
-            "broker_port": 1883
-        }
+    # elif device_type == "N": # NUC
+    #     config = {
+    #         "device": f"{device_type}{tc:02d}_{addr}",
+    #         "wearable_addresses": wearable_addr_be,
+    #         "ble_addresses": ble_addr_be,
+    #         "mqtt_topics": [f"{houseID}/{ble_addr.replace(":", "")}" for ble_addr in ble_addr_be],
+    #         "broker_ip_addr": nuc_addr,
+    #         "static_ip": True,
+    #         "broker_port": 1883
+    #     }
 
-        config_path = join(directory, f"{device_type}{tc:02d}_{addr}" +  ".json")
-        with open(config_path, 'w') as config_file:
-            json.dump(config, config_file, indent=4)
+    #     config_path = join(directory, f"{device_type}{tc:02d}_{addr}" +  ".json")
+    #     with open(config_path, 'w') as config_file:
+    #         json.dump(config, config_file, indent=4)
 
 
     elif device_type == "D": # DOCKING STATION
-        config = {
-            "device": f"{device_type}{tc:02d}_{addr}",
-            "wearable_addresses": wearable_addr_be,
-            "mqtt_topic": f"{houseID}/{addr}",
-            "broker_ip_addr": nuc_addr,
-            "broker_port": 1883
+        input_path = os.path.join("firmware", "docking_station", "dock.c")
+        output_path = os.path.join(directory, f"{addr}_dock.c")
+
+        with open(input_path, 'r', encoding='utf-8', errors='replace') as file:
+            content = file.read()
+
+        # Remove existing #define values
+        patterns_to_replace = {
+            r'(^[ \t]*#define\s+BROKER_ADDR\s+)".*?"(\s*$)': f'\\1"{nuc_addr}"\\2',
+            r'(^[ \t]*#define\s+MQTT_TOPIC\s+)".*?"(\s*$)': f'\\1"{houseID}/{addr}"\\2',
+            r'(^[ \t]*#define\s+WEARABLE_ID\s+)".*?"(\s*$)': f'\\1"{ble_addr_be[0]}"\\2',
+            r'(^[ \t]*#define\s+GATEWAY_ID\s+)".*?"(\s*$)': f'\\1"{wearable_addr_be[0]}"\\2',
         }
 
-        config_path = join(directory, f"{device_type}{tc:02d}_{addr}" +  ".json")
-        with open(config_path, 'w') as config_file:
-            json.dump(config, config_file, indent=4)
+        for pattern, replacement in patterns_to_replace.items():
+            content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+
+        with open(output_path, 'w', encoding='utf-8') as file:
+            file.write(content)
 
 
     else: # WEARABLE
@@ -460,7 +465,8 @@ for nuc_count in range(0,total_nucs):
 
     device = nuc_count
 
-    NUC_addr = make_ip_addr(network, device)
+    # NUC_addr = make_ip_addr(network, device)
+    NUC_addr = "192.168.88.251"
 
     label_addr = NUC_addr.replace(".", "")
     nuc_label_addr = label_addr
