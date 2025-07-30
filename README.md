@@ -243,6 +243,7 @@ from meeting with duke, to do:
 
 - get rid of zephyr_full.hex
   **<- i'll do this after i know its changing the correct addresses, so at the end or at least once its been tested successfully on the wearable**
+  **done**
 - check that aes key and target ap addr are correct
   20007a90 l O bss 00000004 g_aes_key_id
   0004c758 l O rodata 00000010 aes_key.0
@@ -359,5 +360,11 @@ from meeting with duke, to do:
 
 # 24/07/25
 - in dock, user will have to change as well.
+
+
+# 25/07/25
+- need to test things.
+- need to figure out how to get the data factory hex in the BORUS file.
+- create a csv file with all the data, mac addresses, etc., that can be given to hypercat.  
 
 - > > > > > > > 12438dc86a2007be4ce26837d4384f458eb6d021

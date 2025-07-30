@@ -187,7 +187,7 @@ def make_image(network, keys, houseID, wearable_addr_be, ble_addr_be, nuc_addr, 
             target_mac_decl = f'static const char target_mac[] = "{wearable_addr_be[0]}"; /* BORUS wearable */'
         else:
             target_mac_array = ',\n    '.join(f'"{mac}"' for mac in wearable_addr_be)
-            target_mac_decl = f'const char* target_mac[] = {{\n    {target_mac_array}\n}}; /* BORUS wearable */'
+            target_mac_decl = f'const char *target_mac[] = {{\n    {target_mac_array}\n}}; /* BORUS wearable */'
         
         insertion_match = re.search(r'static\s+const\s+char\s+random_ble_addr\[\]\s*=\s*".*?";', content)
         insert_idx = insertion_match.start()
